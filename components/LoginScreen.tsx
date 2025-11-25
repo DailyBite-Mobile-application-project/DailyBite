@@ -10,6 +10,9 @@ import {
 } from 'react-native';
 import { Mail, Lock, User, Leaf } from 'lucide-react-native';
 import { useApp } from './AppContext';
+import { signup, login as apiLogin } from './api';
+
+type Props = {};
 
 export function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -17,17 +20,23 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const { login } = useApp();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    const user = {
-      id: '1',
-      name: name || 'Jan Kowalski',
-      email,
-      goal: 'Weight Loss',
-      targetCalories: 2000
-    };
-
-    login(user);
+  const handleSubmit = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+          const data = isSignUp
+              ? await signup({ name, email, password })
+              : await apiLogin({ email, password })
+          login(data.user);
+      } catch (err: unknown) {
+          if (err instanceof Error) setError(err.message);
+          else setError('Something went wrong');
+      } finally {
+          setLoading(false)
+      }
   };
 
   return (
@@ -182,8 +191,14 @@ export function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-function Field({ icon: Icon, value, onChange, placeholder, secure = false }) {
+type FieldProps = {
+    icon: any;
+    value: string;
+    onChange: (text: string) => void;
+    placeholder: string;
+    secure?: boolean;
+};
+function Field({ icon: Icon, value, onChange, placeholder, secure = false }: FieldProps) {
   return (
     <View style={{ marginBottom: 16 }}>
       <View style={{ position: 'absolute', left: 12, top: 16 }}>
