@@ -8,12 +8,14 @@ SECRET = os.getenv("JWT_SECRET")
 
 
 def hash_password(password: str):
-    password_bytes = password.encode("utf-8")[:72]
+    password_bytes = password.encode("utf-8")
+    password_bytes = password_bytes[:72]
     return pwd.hash(password_bytes)
 
 
 def verify_password(password: str, hash: str):
-    password_bytes = password.encode("utf-8")[:72]
+    password_bytes = password.encode("utf-8")
+    password_bytes = password_bytes[:72]
     return pwd.verify(password_bytes, hash)
 
 

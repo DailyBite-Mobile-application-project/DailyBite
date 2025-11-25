@@ -10,6 +10,14 @@ load_dotenv()
 app = FastAPI()
 
 
+@app.middleware("http")
+async def log_requests(request, call_next):
+    body = await request.body()
+    print("REQUEST BODY:", body)
+    response = await call_next(request)
+    return response
+
+
 # uvicorn main:app --reload --host 0.0.0.0
 @app.post("/signup")
 async def signup(user: UserCreate):
