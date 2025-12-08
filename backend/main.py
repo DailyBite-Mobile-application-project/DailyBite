@@ -1,71 +1,22 @@
-from fastapi import FastAPI, HTTPException
-from models import UserCreate, UserLogin, UserPublic
-from database import users_collection
-from auth import hash_password, verify_password, create_token
-from bson import ObjectId
-from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from backend.core.config import settings
+from backend.routes import auth as auth_router, users as users_router
 
-load_dotenv()
+app = FastAPI(title="MyApp API")
 
-app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-
-@app.middleware("http")
-async def log_requests(request, call_next):
-    body = await request.body()
-    print("REQUEST BODY:", body)
-    response = await call_next(request)
-    return response
-
-
-# uvicorn main:app --reload --host 0.0.0.0
-@app.post("/signup")
-async def signup(user: UserCreate):
-    existing = await users_collection.find_one({"email": user.email})
-    if existing:
-        raise HTTPException(400, "Email already in use")
-
-    passwordHash = hash_password(user.password)
-
-    new_user = {
-        "name": user.name,
-        "email": user.email,
-        "passwordHash": passwordHash,
-        "goal": "Weight loss",
-        "targetCalories": 2000
-    }
-
-    result = await users_collection.insert_one(new_user)
-    user_id = str(result.inserted_id)
-
-    token = create_token(user_id)
-
-    return {
-        "token": token,
-        "user": {
-            "id": user_id,
-            "name": user.name,
-            "email": user.email
-        }
-    }
+app.include_router(auth_router.router)
+app.include_router(users_router.router)
 
 
-@app.post("/login")
-async def login(user: UserLogin):
-    db_user = await users_collection.find_one({"email": user.email})
-    if not db_user:
-        raise HTTPException(400, "Invalid credentials")
-
-    if not verify_password(user.password, db_user["passwordHash"]):
-        raise HTTPException(400, "Invalid credentials")
-
-    token = create_token(str(db_user["_id"]))
-
-    return {
-        "token": token,
-        "user": {
-            "id": str(db_user["_id"]),
-            "name": db_user["name"],
-            "email": db_user["email"]
-        }
-    }
+@app.get("/health")
+async def health():
+    return {"status": "ok"}

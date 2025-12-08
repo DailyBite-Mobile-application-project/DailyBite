@@ -1,18 +1,27 @@
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from datetime import datetime
 
 
-class UserCreate(BaseModel):
-    name: str
+class UserInDB(BaseModel):
+    id: Optional[str]
     email: EmailStr
-    password: constr(min_length=6, max_length=72)
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    hashed_password: str
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class UserPublic(BaseModel):
-    id: str
-    name: str
+    id: Optional[str]
     email: EmailStr
+    is_active: bool
+    created_at: datetime
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenWithRefresh(Token):
+    refresh_token: str

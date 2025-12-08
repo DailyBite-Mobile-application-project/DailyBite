@@ -39,9 +39,9 @@ export function LoginScreen() {
             const data = isSignUp
                 ? await signup({ name, email, password })
                 : await apiLogin({ email, password });
-            login(data.user);
+            login(data);
         } catch (err: unknown) {
-            if (err instanceof Error) setErrors({ email: err.message }); // mo¿esz zmieniæ na bardziej globalny komunikat
+            if (err instanceof Error) setErrors({ email: err.message }); // moï¿½esz zmieniï¿½ na bardziej globalny komunikat
             else setErrors({ email: 'Something went wrong' });
         } finally {
             setLoading(false);

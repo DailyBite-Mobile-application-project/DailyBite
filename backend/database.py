@@ -1,11 +1,17 @@
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
+# backend/database.py
 from motor.motor_asyncio import AsyncIOMotorClient
+from .core.config import settings
 
-MONGO_URL = os.getenv("MONGO_URL")
+_client: AsyncIOMotorClient | None = None
 
-client = AsyncIOMotorClient(MONGO_URL)
-db = client.dailybites
-users_collection = db.users
+
+def get_client() -> AsyncIOMotorClient:
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(settings.MONGO_URL)
+    return _client
+
+
+def get_database():
+    client = get_client()
+    return client[settings.MONGO_DB]
