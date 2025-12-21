@@ -1,18 +1,19 @@
+from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
-from datetime import datetime
 
 
 class UserInDB(BaseModel):
-    id: Optional[str]
+    id: str
     email: EmailStr
     hashed_password: str
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
-class UserPublic(BaseModel):
-    id: Optional[str]
+class UserResponse(BaseModel):
+    id: str
     email: EmailStr
     is_active: bool
     created_at: datetime

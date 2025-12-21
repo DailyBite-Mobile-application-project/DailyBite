@@ -1,17 +1,37 @@
-# backend/database.py
 from motor.motor_asyncio import AsyncIOMotorClient
-from .core.config import settings
+from backend.core.config import settings
 
-_client: AsyncIOMotorClient | None = None
+client: AsyncIOMotorClient | None = None
+_db = None
 
 
-def get_client() -> AsyncIOMotorClient:
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(settings.MONGO_URL)
-    return _client
+async def connect_to_mongo() -> None:
+    global client, _db
+
+    if client is not None:
+        return
+
+    client = AsyncIOMotorClient(
+        settings.MONGO_URL,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000,
+    )
+
+    _db = client[settings.MONGO_DB]
+
+
+async def close_mongo_connection() -> None:
+    global client, _db
+
+    if client:
+        client.close()
+
+    client = None
+    _db = None
 
 
 def get_database():
-    client = get_client()
-    return client[settings.MONGO_DB]
+    if _db is None:
+        raise RuntimeError("Database not initialized. Call connect_to_mongo() first.")
+    return _db

@@ -32,21 +32,29 @@ export function LoginScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!validate()) return;
+    if (!validate()) return;
 
-        setLoading(true);
-        try {
-            const data = isSignUp
-                ? await signup({ name, email, password })
-                : await apiLogin({ email, password });
-            login(data);
-        } catch (err: unknown) {
-            if (err instanceof Error) setErrors({ email: err.message }); // mo�esz zmieni� na bardziej globalny komunikat
-            else setErrors({ email: 'Something went wrong' });
-        } finally {
-            setLoading(false);
+    setLoading(true);
+    try {
+        if (isSignUp) {
+            await signup({ email, password });
+            const tokens = await apiLogin({ email, password });
+            login(tokens);
+        } else {
+            const tokens = await apiLogin({ email, password });
+            login(tokens);
         }
-    };
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+            setErrors({ email: err.message });
+        } else {
+            setErrors({ email: 'Something went wrong' });
+        }
+    } finally {
+        setLoading(false);
+    }
+};
+
 
     return (
         <KeyboardAvoidingView

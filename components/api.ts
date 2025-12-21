@@ -1,41 +1,45 @@
-const BASE_URL = "http://192.168.0.101:8000";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
-export async function signup(data: { name: string; email: string; password: string }) {
-    const res = await fetch(`${BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+type ApiError = {
+    detail?: string;
+};
+
+async function request<T>(url: string, options: RequestInit): Promise<T> {
+    const res = await fetch(url, {
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+        },
+        ...options,
     });
 
     if (!res.ok) {
-        let error;
+        let error: ApiError = {};
         try {
             error = await res.json();
         } catch {
-            throw new Error("Signup failed");
+            throw new Error("Request failed");
         }
-        throw new Error(error.detail || "Signup failed");
+        throw new Error(error.detail || "Request failed");
     }
 
     return res.json();
 }
 
-export async function login(data: { email: string; password: string }) {
-    const res = await fetch(`${BASE_URL}/api/auth/token`, {
+export function signup(data: { email: string; password: string }) {
+    return request(`${BASE_URL}/api/auth/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
+}
 
-    if (!res.ok) {
-        let error;
-        try {
-            error = await res.json();
-        } catch {
-            throw new Error("Login failed");
-        }
-        throw new Error(error.detail || "Login failed");
-    }
-
-    return res.json();
+export function login(data: { email: string; password: string }) {
+    return request<{
+        access_token: string;
+        refresh_token: string;
+        token_type: string;
+    }>(`${BASE_URL}/api/auth/token`, {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
 }
