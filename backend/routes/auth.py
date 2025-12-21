@@ -1,14 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
-from backend.schemas import UserCreate, UserLogin, RefreshTokenRequest
-from backend.services.auth_service import (
+from schemas import UserCreate, UserLogin, RefreshTokenRequest
+from services.auth_service import (
     create_user,
     authenticate_user,
     create_tokens_for_user,
     get_user_by_email,
 )
-from backend.database import get_database
-from backend.core.config import settings
-from backend.auth import create_access_token
+from database import get_database
+from core.config import settings
 from jose import jwt, JWTError
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])

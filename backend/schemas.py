@@ -1,5 +1,5 @@
-from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
 
 class UserCreate(BaseModel):
@@ -13,10 +13,9 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: str
+    id: Optional[str]
     email: EmailStr
     is_active: bool
-    created_at: datetime
 
 
 class RefreshTokenRequest(BaseModel):

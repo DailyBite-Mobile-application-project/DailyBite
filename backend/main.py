@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.core.config import settings
-from backend.database import connect_to_mongo, close_mongo_connection
-from backend.routers import auth as auth_router
-from backend.routers import users as users_router
+from core.config import settings
+from database import connect_to_mongo, close_mongo_connection
+from routers import auth as auth_router
+from routers import users as users_router
 
 
 app = FastAPI(

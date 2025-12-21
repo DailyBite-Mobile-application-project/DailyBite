@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from backend.core.config import settings
+from core.config import settings
 
 client: AsyncIOMotorClient | None = None
 _db = None

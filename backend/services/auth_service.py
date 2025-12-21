@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from passlib.context import CryptContext
-from backend.database import get_database
-from backend.auth import create_access_token, create_refresh_token
+from database import get_database
+from security import create_access_token, create_refresh_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
