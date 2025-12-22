@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
-from schemas import UserCreate, UserLogin, RefreshTokenRequest
-from services.auth_service import (
+from backend.schemas import UserCreate, UserLogin, RefreshTokenRequest
+from backend.services.auth_service import (
     create_user,
     authenticate_user,
     create_tokens_for_user,
