@@ -7,7 +7,7 @@ from backend.services.auth_service import (
     get_user_by_email,
 )
 from backend.database import get_database
-from core.config import settings
+from backend.core.config import settings
 from jose import jwt, JWTError
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
