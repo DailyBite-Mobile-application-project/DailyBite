@@ -4,7 +4,11 @@ from backend.database import get_database
 from backend.security import create_access_token, create_refresh_token
 import hashlib
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False
+)
 
 
 async def get_user_by_email(email: str) -> dict | None:
