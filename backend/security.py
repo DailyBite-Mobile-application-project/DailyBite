@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 
 from backend.core.config import settings
-from database import get_database
+from backend.database import get_database
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 

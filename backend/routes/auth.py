@@ -6,7 +6,7 @@ from backend.services.auth_service import (
     create_tokens_for_user,
     get_user_by_email,
 )
-from database import get_database
+from backend.database import get_database
 from core.config import settings
 from jose import jwt, JWTError
 
