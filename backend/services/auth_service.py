@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from passlib.context import CryptContext
 from backend.database import get_database
 from backend.security import create_access_token, create_refresh_token
+import hashlib
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -14,7 +15,9 @@ async def get_user_by_email(email: str) -> dict | None:
 async def create_user(email: str, password: str) -> dict:
     db = get_database()
 
+    password = hashlib.sha256(password.encode("utf-8")).hexdigest()
     hashed = pwd_context.hash(password)
+
     doc = {
         "email": email,
         "hashed_password": hashed,
@@ -31,6 +34,7 @@ async def create_user(email: str, password: str) -> dict:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    plain = hashlib.sha256(plain.encode("utf-8")).hexdigest()
     return pwd_context.verify(plain, hashed)
 
 

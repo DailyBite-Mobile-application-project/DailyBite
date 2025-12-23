@@ -1,4 +1,5 @@
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
+const BASE_URL = "https://dailybite-e3r3.onrender.com";
+
 
 type ApiError = {
     detail?: string;
