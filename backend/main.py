@@ -8,7 +8,7 @@ from backend.routes import users as users_router
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="Backend API",
     version="1.0.0",
 )
 
