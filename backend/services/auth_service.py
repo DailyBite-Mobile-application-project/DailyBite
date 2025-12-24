@@ -5,7 +5,7 @@ from backend.security import create_access_token, create_refresh_token
 
 pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"],
-    deprecated="auto"
+    deprecated="auto",
 )
 
 
@@ -50,14 +50,13 @@ async def authenticate_user(email: str, password: str) -> dict | None:
         return None
 
     return {
-        "_id": user["_id"],
         "id": str(user["_id"]),
         "email": user["email"],
     }
 
 
 async def create_tokens_for_user(user: dict) -> dict:
-    user_id = str(user["id"])
+    user_id = user["id"]
 
     access = create_access_token(user_id)
     refresh = create_refresh_token(user_id)
@@ -79,3 +78,4 @@ async def create_tokens_for_user(user: dict) -> dict:
         "refresh_token": refresh,
         "token_type": "bearer",
     }
+

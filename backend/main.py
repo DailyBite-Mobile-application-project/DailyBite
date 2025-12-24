@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.config import settings
 from backend.database import connect_to_mongo, close_mongo_connection
-from backend.routes import auth as auth_router
-from backend.routes import users as users_router
+from backend.api import auth as auth_router
+from backend.api import users as users_router
 
 
 app = FastAPI(

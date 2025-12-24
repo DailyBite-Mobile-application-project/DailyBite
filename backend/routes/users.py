@@ -15,3 +15,4 @@ async def read_me(current_user: dict = Depends(get_current_user)):
         "id": str(current_user["_id"]),
         "email": current_user["email"],
     }
+

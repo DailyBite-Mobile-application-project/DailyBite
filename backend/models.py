@@ -26,3 +26,4 @@ class Token(BaseModel):
 
 class TokenWithRefresh(Token):
     refresh_token: str
+

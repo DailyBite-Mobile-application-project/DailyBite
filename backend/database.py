@@ -35,3 +35,4 @@ def get_database():
     if _db is None:
         raise RuntimeError("Database not initialized. Call connect_to_mongo() first.")
     return _db
+

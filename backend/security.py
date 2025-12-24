@@ -94,3 +94,4 @@ async def get_current_user(
         "id": str(user["_id"]),
         "email": user["email"],
     }
+

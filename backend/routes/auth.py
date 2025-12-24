@@ -69,7 +69,7 @@ async def refresh_token(payload: RefreshTokenRequest):
             detail="Invalid or revoked token",
         )
 
-    # ROTACJA REFRESH TOKENA
     new_tokens = await create_tokens_for_user({"_id": user_id})
 
     return new_tokens
+

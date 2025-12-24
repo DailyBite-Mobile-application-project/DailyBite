@@ -17,3 +17,4 @@ def get_logger(name: str = "backend") -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     return logger
+
