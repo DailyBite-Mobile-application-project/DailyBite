@@ -9,6 +9,11 @@ pwd_context = CryptContext(
 )
 
 
+async def get_user_by_email(email: str) -> dict | None:
+    db = get_database()
+    return await db.users.find_one({"email": email})
+
+
 async def create_user(email: str, password: str) -> dict:
     db = get_database()
 
@@ -31,3 +36,21 @@ async def create_user(email: str, password: str) -> dict:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
+
+async def authenticate_user(email: str, password: str) -> dict | None:
+    user = await get_user_by_email(email)
+    if not user:
+        return None
+
+    if not user.get("is_active", False):
+        return None
+
+    if not verify_password(password, user["hashed_password"]):
+        return None
+
+    return {
+        "_id": user["_id"],
+        "id": str(user["_id"]),
+        "email": user["email"],
+    }
