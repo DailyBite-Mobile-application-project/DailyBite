@@ -23,7 +23,7 @@ async def register(payload: UserCreate):
         )
 
     user = await create_user(payload.email, payload.password)
-    return {"id": str(user["_id"]), "email": user["email"]}
+    return {"id": str(user["id"]), "email": user["email"]}
 
 
 @router.post("/token", status_code=status.HTTP_200_OK)
