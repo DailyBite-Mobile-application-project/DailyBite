@@ -54,3 +54,28 @@ async def authenticate_user(email: str, password: str) -> dict | None:
         "id": str(user["_id"]),
         "email": user["email"],
     }
+
+
+async def create_tokens_for_user(user: dict) -> dict:
+    user_id = str(user["id"])
+
+    access = create_access_token(user_id)
+    refresh = create_refresh_token(user_id)
+
+    db = get_database()
+    await db.refresh_tokens.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "token": refresh,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+        upsert=True,
+    )
+
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+    }
