@@ -1,51 +1,105 @@
-import requests
+# food_api/services/usda_api.py
+from __future__ import annotations
+
 import os
-from dotenv import load_dotenv
+import logging
+from typing import Any, Dict, Optional, List
 
-load_dotenv()
+import requests
 
-API_KEY = os.getenv("USDA_API_KEY")
-SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+logger = logging.getLogger(__name__)
 
-if not API_KEY:
-    raise RuntimeError("Brak USDA_API_KEY w .env")
-
-NUTRIENT_MAP = {
-    "208": "kalorie",        # Energy (kcal)
-    "203": "bialko",         # Protein
-    "204": "tluszcze",       # Total fat
-    "205": "weglowodany"     # Carbohydrates
-}
+DEFAULT_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 
 
-def get_product_info(query):
-    params = {
+def _get_api_key() -> str:
+    key = os.getenv("USDA_API_KEY")
+    if not key:
+        raise RuntimeError("Brak USDA_API_KEY w zmiennych środowiskowych.")
+    return key
+
+
+def _get_search_url() -> str:
+    return (os.getenv("SEARCH_URL") or DEFAULT_SEARCH_URL).strip().strip('"').strip("'")
+
+
+def _pick_best_food(foods: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Heurystyka wyboru najlepszego rekordu:
+    - preferuj rekordy z większą liczbą nutrientów
+    - preferuj dataType Foundation / SR Legacy
+    """
+    if not foods:
+        return None
+
+    preferred_types = {"Foundation", "SR Legacy"}
+    best = None
+    best_score = -1
+
+    for f in foods:
+        nutrients = f.get("foodNutrients") or []
+        n_count = len(nutrients)
+
+        dtype = (f.get("dataType") or "").strip()
+        dtype_bonus = 50 if dtype in preferred_types else 0
+
+        # krótkie opisy zwykle są bardziej "bazowe" (nie brandowe elaboraty)
+        desc = (f.get("description") or "").strip()
+        desc_penalty = 0
+        if len(desc) > 80:
+            desc_penalty = 5
+
+        score = n_count + dtype_bonus - desc_penalty
+
+        if score > best_score:
+            best_score = score
+            best = f
+
+    return best
+
+
+def search_food(query: str, page_size: int = 10) -> Optional[Dict[str, Any]]:
+    """
+    Zwraca 'najlepszy' rekord food z USDA FDC albo None.
+    """
+    url = _get_search_url()
+    api_key = _get_api_key()
+
+    payload = {
         "query": query,
-        "api_key": API_KEY,
-        "pageSize": 1
+        "pageSize": page_size,
+        # zawężamy do bardziej bazowych danych (dużo lepsze trafienia)
+        "dataType": ["Foundation", "SR Legacy", "Survey (FNDDS)"],
     }
 
     try:
-        response = requests.get(SEARCH_URL, params=params, timeout=10)
-        response.raise_for_status()
+        resp = requests.post(url, params={"api_key": api_key}, json=payload, timeout=15)
     except requests.RequestException as e:
-        print(f"Błąd połączenia z USDA ({query}): {e}")
+        logger.warning("USDA request error dla query=%r: %s", query, e)
         return None
 
-    data = response.json()
-
-    if "foods" not in data or not data["foods"]:
+    if resp.status_code != 200:
+        snippet = (resp.text or "")[:300].replace("\n", " ")
+        logger.warning(
+            "USDA HTTP %s dla query=%r. Body: %s",
+            resp.status_code,
+            query,
+            snippet,
+        )
         return None
 
-    food = data["foods"][0]
-    nutrients = {v: 0 for v in NUTRIENT_MAP.values()}
+    try:
+        data = resp.json()
+    except ValueError:
+        snippet = (resp.text or "")[:300].replace("\n", " ")
+        logger.warning("USDA: niepoprawny JSON dla query=%r. Body: %s", query, snippet)
+        return None
 
-    for n in food.get("foodNutrients", []):
-        nutrient_number = n.get("nutrientNumber")
-        if nutrient_number in NUTRIENT_MAP:
-            nutrients[NUTRIENT_MAP[nutrient_number]] = n.get("value", 0)
+    foods = data.get("foods") or []
+    best = _pick_best_food(foods)
 
-    return {
-        "nazwa": food.get("description", query),
-        **nutrients
-    }
+    if not best:
+        logger.info("USDA: brak wyników dla query=%r (foods=%s)", query, len(foods))
+        return None
+
+    return best

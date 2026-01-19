@@ -1,15 +1,27 @@
-from pymongo import MongoClient
 import os
-from dotenv import load_dotenv
+from pymongo import MongoClient
 
-load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("MONGO_DB_NAME", "fooddb")
+def _get_mongo_uri() -> str:
+    mongo_uri = os.getenv("MONGO_URI")
+    if not mongo_uri:
+        raise RuntimeError(
+            "Brak MONGO_URI w zmiennych środowiskowych. "
+            "Ustaw MONGO_URI (lokalnie możesz użyć pliku .env i python-dotenv w entrypoincie)."
+        )
+    return mongo_uri
 
-if not MONGO_URI:
-    raise RuntimeError("Brak MONGO_URI w .env")
 
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
-produkty_collection = db["produkty"]
+def get_db_name() -> str:
+    return os.getenv("MONGO_DB_NAME", "fooddb")
+
+
+def get_client() -> MongoClient:
+    return MongoClient(_get_mongo_uri())
+
+
+def get_produkty_collection():
+    client = get_client()
+    db = client[get_db_name()]
+    return db["produkty"]
+

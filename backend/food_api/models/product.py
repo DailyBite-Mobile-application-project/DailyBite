@@ -1,11 +1,26 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class Product:
-    def __init__(self, nazwa, kalorie=0, bialko=0, weglowodany=0, tluszcze=0, waga=100):
-        self.nazwa = nazwa
-        self.kalorie = float(kalorie)
-        self.bialko = float(bialko)
-        self.weglowodany = float(weglowodany)
-        self.tluszcze = float(tluszcze)
-        self.waga = waga
+    nazwa: str
+    kalorie: float = 0.0
+    bialko: float = 0.0
+    weglowodany: float = 0.0
+    tluszcze: float = 0.0
+    waga: float = 100.0
+
+    def __post_init__(self) -> None:
+        if not self.nazwa or not str(self.nazwa).strip():
+            raise ValueError("nazwa nie może być pusta")
+
+        # Normalizacja typów
+        self.nazwa = str(self.nazwa).strip()
+        self.kalorie = float(self.kalorie or 0)
+        self.bialko = float(self.bialko or 0)
+        self.weglowodany = float(self.weglowodany or 0)
+        self.tluszcze = float(self.tluszcze or 0)
+        self.waga = float(self.waga or 100)
 
     def to_dict(self):
         return {
