@@ -11,6 +11,9 @@ export type Screen =
   | 'schedule'
   | 'settings';
 
+export type Language = 'pl' | 'en';
+export type ThemeMode = 'light' | 'dark';
+
 export type DietPlan = {
   id: string;
   name: string;
@@ -59,7 +62,7 @@ export type User = {
 
 type AppContextType = {
   user: User | null;
-  login: (user: User) => void;
+  login: (user: any) => void;
   logout: () => void;
 
   currentScreen: Screen;
@@ -81,9 +84,16 @@ type AppContextType = {
 
   scheduledMeals: ScheduledMeal[];
   setScheduledMeals: (meals: ScheduledMeal[]) => void;
+
+  language: Language;
+  setLanguage: (lang: Language) => void;
+
+  theme: ThemeMode;
+  setTheme: (mode: ThemeMode) => void;
 };
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContextInternal = createContext<AppContextType | undefined>(undefined);
+
 
 const mockDietPlans: DietPlan[] = [
   {
@@ -158,6 +168,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [scheduledMeals, setScheduledMeals] = useState<ScheduledMeal[]>([]);
 
+  const [language, setLanguage] = useState<Language>('pl');
+
+  const [theme, setTheme] = useState<ThemeMode>('light');
+
   const navigate = (screen: Screen) => {
     setCurrentScreen(screen);
 
@@ -185,8 +199,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigate('dish-editor');
   };
 
-  const login = (user: User) => {
-    setUser(user);
+  const login = (userLike: any) => {
+    setUser(userLike);
     navigate('main');
   };
 
@@ -196,7 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppContext.Provider
+    <AppContextInternal.Provider
       value={{
         user,
         login,
@@ -214,16 +228,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dishes,
         setDishes,
         scheduledMeals,
-        setScheduledMeals
+        setScheduledMeals,
+        language,
+        setLanguage,
+        theme,
+        setTheme
       }}
     >
       {children}
-    </AppContext.Provider>
+    </AppContextInternal.Provider>
   );
 }
 
 export function useApp() {
-  const context = useContext(AppContext);
+  const context = useContext(AppContextInternal);
   if (!context) throw new Error('useApp must be used within an AppProvider');
   return context;
 }

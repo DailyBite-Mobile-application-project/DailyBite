@@ -1,9 +1,6 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity
-} from 'react-native';
+// SettingsScreen.tsx
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import {
   ArrowLeft,
   User,
@@ -12,49 +9,62 @@ import {
   Lock,
   HelpCircle,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Sun,
+  Moon,
+  Languages
 } from 'lucide-react-native';
 import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
+import { useT } from './i18n';
+import { useTheme } from './theme';
 
 export function SettingsScreen() {
-  const { user, logout, navigate } = useApp();
+  const { user, logout, navigate, theme, setTheme, language, setLanguage } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
+  const brandHeaderBg = theme === 'dark' ? '#0b3d2a' : colors.primary;
+
+  // i18n: używamy kluczy, które masz w słowniku
   const settingsSections = [
     {
-      title: 'Profile',
+      title: t('settings.profile'),
       items: [
-        { icon: User, label: 'Personal Information', value: user?.name },
-        { icon: Target, label: 'Health Goals', value: user?.goal }
+        { icon: User, label: t('settings.personalInfo'), value: user?.name ?? '' },
+        { icon: Target, label: t('settings.healthGoals'), value: (user as any)?.goal ?? '' }
       ]
     },
     {
-      title: 'Preferences',
+      title: t('settings.preferences'),
       items: [
-        { icon: Bell, label: 'Notifications', value: 'Enabled' },
-        { icon: Target, label: 'Daily Calorie Target', value: `${user?.targetCalories} kcal` }
+        { icon: Bell, label: t('settings.notifications'), value: t('settings.enabled') },
+        {
+          icon: Target,
+          label: t('settings.dailyTarget'),
+          value: `${(user as any)?.targetCalories ?? '-'} ${t('common.kcal')}`
+        }
       ]
     },
     {
-      title: 'Account',
+      title: t('settings.account'),
       items: [
-        { icon: Lock, label: 'Privacy & Security' },
-        { icon: HelpCircle, label: 'Help & Support' }
+        { icon: Lock, label: t('settings.privacy') },
+        { icon: HelpCircle, label: t('settings.help') }
       ]
     }
-  ];
+  ] as const;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f3f4f6', paddingBottom: 70 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        
         {/* HEADER */}
         <View
           style={{
-            backgroundColor: '#00c056ff',
+            backgroundColor: brandHeaderBg,
             paddingHorizontal: 20,
             paddingTop: 26,
-            paddingBottom: 40,
+            paddingBottom: 40
           }}
         >
           <TouchableOpacity
@@ -62,7 +72,7 @@ export function SettingsScreen() {
             style={{
               width: 40,
               height: 40,
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              backgroundColor: 'rgba(255,255,255,0.20)',
               borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
@@ -88,9 +98,11 @@ export function SettingsScreen() {
 
             <View>
               <Text style={{ fontSize: 22, fontWeight: '700', color: 'white' }}>
-                {user?.name}
+                {user?.name ?? ''}
               </Text>
-              <Text style={{ color: '#d1fae5' }}>{user?.email}</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)' }}>
+                {(user as any)?.email ?? ''}
+              </Text>
             </View>
           </View>
         </View>
@@ -99,42 +111,86 @@ export function SettingsScreen() {
         <View style={{ paddingHorizontal: 20, marginTop: -26, marginBottom: 20 }}>
           <View
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.card,
               padding: 20,
               borderRadius: 12,
               shadowColor: '#000',
-              shadowOpacity: 0.08,
-              shadowRadius: 6
+              shadowOpacity: theme === 'dark' ? 0 : 0.08,
+              shadowRadius: 6,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
             }}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between'
-              }}
-            >
-              <Stat label="Days Active" value="12" />
-              <Stat label="Meals Logged" value="45" divider />
-              <Stat label="Progress" value="2.3kg" />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Stat label={t('settings.daysActive')} value="12" colors={colors} />
+              <Stat label={t('settings.mealsLogged')} value="45" divider colors={colors} />
+              <Stat label={t('settings.progress')} value="2.3kg" colors={colors} />
             </View>
           </View>
         </View>
 
-        {/* SETTINGS */}
+        {/* THEME + LANGUAGE (DODANE, NIE USUWAJĄ RESZTY) */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10, color: colors.text }}>
+            {t('settings.theme')}
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
+            <OptionCard
+              active={theme === 'light'}
+              onPress={() => setTheme('light')}
+              icon={<Sun size={18} color={theme === 'light' ? colors.primaryText : colors.text} />}
+              label={t('settings.theme.light')}
+              colors={colors}
+            />
+            <OptionCard
+              active={theme === 'dark'}
+              onPress={() => setTheme('dark')}
+              icon={<Moon size={18} color={theme === 'dark' ? colors.primaryText : colors.text} />}
+              label={t('settings.theme.dark')}
+              colors={colors}
+            />
+          </View>
+
+          <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10, color: colors.text }}>
+            {t('settings.language')}
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <OptionCard
+              active={language === 'pl'}
+              onPress={() => setLanguage('pl')}
+              icon={<Languages size={18} color={language === 'pl' ? colors.primaryText : colors.text} />}
+              label="PL"
+              colors={colors}
+            />
+            <OptionCard
+              active={language === 'en'}
+              onPress={() => setLanguage('en')}
+              icon={<Languages size={18} color={language === 'en' ? colors.primaryText : colors.text} />}
+              label="EN"
+              colors={colors}
+            />
+          </View>
+        </View>
+
+        {/* SETTINGS LIST (STARE SEKCJE) */}
         <View style={{ paddingHorizontal: 20 }}>
           {settingsSections.map((section, i) => (
             <View key={i} style={{ marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: '#111827' }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: colors.text }}>
                 {section.title}
               </Text>
 
               <View
                 style={{
-                  backgroundColor: 'white',
+                  backgroundColor: colors.card,
                   borderRadius: 12,
                   shadowColor: '#000',
-                  shadowOpacity: 0.06,
-                  shadowRadius: 4
+                  shadowOpacity: theme === 'dark' ? 0 : 0.06,
+                  shadowRadius: 4,
+                  borderWidth: theme === 'dark' ? 1 : 0,
+                  borderColor: theme === 'dark' ? colors.border : 'transparent'
                 }}
               >
                 {section.items.map((item, j) => (
@@ -145,7 +201,7 @@ export function SettingsScreen() {
                       justifyContent: 'space-between',
                       padding: 18,
                       borderBottomWidth: j !== section.items.length - 1 ? 1 : 0,
-                      borderColor: '#e5e7eb',
+                      borderColor: colors.border,
                       alignItems: 'center'
                     }}
                   >
@@ -154,27 +210,29 @@ export function SettingsScreen() {
                         style={{
                           width: 44,
                           height: 44,
-                          backgroundColor: '#d1fae5',
+                          backgroundColor: colors.primarySoft ?? 'rgba(0,192,86,0.16)',
                           borderRadius: 8,
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          borderWidth: theme === 'dark' ? 1 : 0,
+                          borderColor: theme === 'dark' ? 'rgba(0,192,86,0.22)' : 'transparent'
                         }}
                       >
-                        <item.icon size={20} color="#00c056ff" />
+                        <item.icon size={20} color={colors.primary} />
                       </View>
 
                       <View>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
                           {item.label}
                         </Text>
 
-                        {item.value && (
-                          <Text style={{ color: '#6b7280' }}>{item.value}</Text>
+                        {!!(item as any).value && (
+                          <Text style={{ color: colors.muted }}>{(item as any).value}</Text>
                         )}
                       </View>
                     </View>
 
-                    <ChevronRight size={20} color="#9ca3af" />
+                    <ChevronRight size={20} color={colors.muted} />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -185,27 +243,28 @@ export function SettingsScreen() {
           <TouchableOpacity
             onPress={logout}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.card,
               padding: 18,
               borderRadius: 12,
               shadowColor: '#000',
-              shadowOpacity: 0.06,
+              shadowOpacity: theme === 'dark' ? 0 : 0.06,
               shadowRadius: 4,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
               gap: 8,
-              marginTop: 8
+              marginTop: 8,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
             }}
           >
-            <LogOut size={20} color="#dc2626" />
-            <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 16 }}>
-              Logout
+            <LogOut size={20} color={colors.danger ?? '#dc2626'} />
+            <Text style={{ color: colors.danger ?? '#dc2626', fontWeight: '700', fontSize: 16 }}>
+              {t('settings.logout')}
             </Text>
           </TouchableOpacity>
 
-          {/* APP VERSION */}
-          <Text style={{ textAlign: 'center', color: '#6b7280', marginVertical: 20 }}>
+          <Text style={{ textAlign: 'center', color: colors.muted, marginVertical: 20 }}>
             DailyBites v0.1
           </Text>
         </View>
@@ -216,7 +275,60 @@ export function SettingsScreen() {
   );
 }
 
-function Stat({ label, value, divider = false }) {
+function OptionCard({
+  active,
+  onPress,
+  icon,
+  label,
+  colors
+}: {
+  active: boolean;
+  onPress: () => void;
+  icon: React.ReactNode;
+  label: string;
+  colors: any;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        flex: 1,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: active ? colors.primary : colors.card,
+        borderWidth: active ? 0 : 1,
+        borderColor: active ? 'transparent' : colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row'
+      }}
+    >
+      {icon}
+      <Text
+        style={{
+          marginLeft: 8,
+          color: active ? colors.primaryText : colors.text,
+          fontWeight: '700'
+        }}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  divider = false,
+  colors
+}: {
+  label: string;
+  value: string;
+  divider?: boolean;
+  colors: any;
+}) {
   return (
     <View
       style={{
@@ -224,12 +336,12 @@ function Stat({ label, value, divider = false }) {
         paddingHorizontal: 10,
         borderLeftWidth: divider ? 1 : 0,
         borderRightWidth: divider ? 1 : 0,
-        borderColor: '#e5e7eb',
+        borderColor: colors.border,
         width: '33%'
       }}
     >
-      <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{value}</Text>
-      <Text style={{ color: '#6b7280' }}>{label}</Text>
+      <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>{value}</Text>
+      <Text style={{ color: colors.muted }}>{label}</Text>
     </View>
   );
 }

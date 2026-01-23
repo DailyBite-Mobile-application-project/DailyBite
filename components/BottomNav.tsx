@@ -1,17 +1,23 @@
+// BottomNav.tsx
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Home, Book, Calendar, User } from 'lucide-react-native';
+import { Home, Book, Calendar, User, Apple } from 'lucide-react-native';
 import { useApp } from './AppContext';
+import { useT } from './i18n';
+import { useTheme } from './theme';
 
-type NavItem = 'main' | 'diet-plans' | 'schedule' | 'settings';
+type NavItem = 'main' | 'diet-plans' | 'products' | 'schedule' | 'settings';
 
 export function BottomNav({ active }: { active: NavItem }) {
   const { navigate } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
   const navItems = [
-    { id: 'main' as const, icon: Home, label: 'Home' },
-    { id: 'diet-plans' as const, icon: Book, label: 'Plans' },
-    { id: 'schedule' as const, icon: Calendar, label: 'Schedule' },
-    { id: 'settings' as const, icon: User, label: 'Profile' },
+    { id: 'main' as const, icon: Home, label: t('nav.home') },
+    { id: 'diet-plans' as const, icon: Book, label: t('nav.plans') },
+    { id: 'products' as const, icon: Apple, label: t('nav.products') },
+    { id: 'schedule' as const, icon: Calendar, label: t('nav.schedule') },
+    { id: 'settings' as const, icon: User, label: t('nav.profile') }
   ];
 
   return (
@@ -21,11 +27,11 @@ export function BottomNav({ active }: { active: NavItem }) {
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.card,
         borderTopWidth: 1,
-        borderColor: '#e5e7eb',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
+        borderColor: colors.border,
+        paddingHorizontal: 18,
+        paddingVertical: 10
       }}
     >
       <View
@@ -33,8 +39,8 @@ export function BottomNav({ active }: { active: NavItem }) {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-around',
-          maxWidth: 400,
-          alignSelf: 'center',
+          maxWidth: 520,
+          alignSelf: 'center'
         }}
       >
         {navItems.map((item) => {
@@ -45,25 +51,22 @@ export function BottomNav({ active }: { active: NavItem }) {
               key={item.id}
               onPress={() => navigate(item.id)}
               style={{
-                flexDirection: 'column',
                 alignItems: 'center',
                 paddingVertical: 8,
-                paddingHorizontal: 16,
+                paddingHorizontal: 10,
                 borderRadius: 12,
-                backgroundColor: isActive ? '#ecfdf5' : '#ffffff',
+                backgroundColor: isActive ? (colors.primarySoft ?? colors.soft) : colors.card,
+                borderWidth: colors.mode === 'dark' && !isActive ? 1 : 0,
+                borderColor: colors.mode === 'dark' && !isActive ? colors.border : 'transparent'
               }}
             >
-              <item.icon
-                size={24}
-                color={isActive ? '#00c056ff' : '#9ca3af'}
-              />
-
+              <item.icon size={22} color={isActive ? colors.primary : colors.muted} />
               <Text
                 style={{
                   marginTop: 2,
-                  color: isActive ? '#00c056ff' : '#6b7280',
-                  fontSize: 12,
-                  fontWeight: '500',
+                  color: isActive ? colors.primary : colors.muted,
+                  fontSize: 11,
+                  fontWeight: '600'
                 }}
               >
                 {item.label}

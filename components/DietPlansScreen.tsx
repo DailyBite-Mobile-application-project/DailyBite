@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,44 +7,63 @@ import {
   TouchableOpacity,
   Image
 } from 'react-native';
-import {
-  ArrowLeft,
-  Clock,
-  Flame,
-  Search,
-  Plus
-} from 'lucide-react-native';
+import { ArrowLeft, Clock, Flame, Search, Plus } from 'lucide-react-native';
 import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
+import { useT } from './i18n';
+import { useTheme } from './theme';
+
+type DietCategory = 'All' | 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
 export function DietPlansScreen() {
   const { dietPlans, navigate, openDietDetail, openDietPlanEditor } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState<DietCategory>('All');
 
-  const categories = ['All', 'Balanced', 'Weight Loss', 'Vegan', 'Keto'];
+  // UWAGA: wartości EN zostają, bo plan.category jest w EN i filtruje po tych wartościach
+  const categories: DietCategory[] = ['All', 'Balanced', 'Weight Loss', 'Vegan', 'Keto'];
 
-  const filteredPlans = dietPlans.filter(plan => {
-    const matchesSearch =
-      plan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      plan.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const categoryLabel = (cat: DietCategory) => {
+    switch (cat) {
+      case 'All':
+        return t('dietCat.all');
+      case 'Balanced':
+        return t('dietCat.balanced');
+      case 'Weight Loss':
+        return t('dietCat.weightLoss');
+      case 'Vegan':
+        return t('dietCat.vegan');
+      case 'Keto':
+        return t('dietCat.keto');
+    }
+  };
 
-    const matchesCategory =
-      selectedCategory === 'All' || plan.category === selectedCategory;
+  const filteredPlans = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
 
-    return matchesSearch && matchesCategory;
-  });
+    return dietPlans.filter(plan => {
+      const matchesSearch =
+        plan.name.toLowerCase().includes(q) ||
+        plan.description.toLowerCase().includes(q);
+
+      const matchesCategory =
+        selectedCategory === 'All' || plan.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [dietPlans, searchQuery, selectedCategory]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
-      
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* HEADER */}
       <View
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           paddingHorizontal: 20,
           paddingVertical: 14
         }}
@@ -55,18 +74,18 @@ export function DietPlansScreen() {
             style={{
               width: 40,
               height: 40,
-              backgroundColor: '#f3f4f6',
+              backgroundColor: colors.input,
               borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 12
             }}
           >
-            <ArrowLeft size={20} color="#374151" />
+            <ArrowLeft size={20} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 22, fontWeight: '600', color: '#111827' }}>
-            Diet Plans
+          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+            {t('dietPlans.title')}
           </Text>
         </View>
 
@@ -74,21 +93,23 @@ export function DietPlansScreen() {
         <View style={{ position: 'relative' }}>
           <Search
             size={18}
-            color="#9ca3af"
+            color={colors.muted}
             style={{ position: 'absolute', left: 12, top: 16 }}
           />
           <TextInput
-            placeholder="Search diet plans..."
+            placeholder={t('dietPlans.searchPlaceholder')}
+            placeholderTextColor={colors.muted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={{
               paddingLeft: 40,
               paddingVertical: 10,
-              backgroundColor: '#f9fafb',
+              backgroundColor: colors.input,
               borderWidth: 1,
-              borderColor: '#e5e7eb',
+              borderColor: colors.border,
               borderRadius: 8,
-              fontSize: 14
+              fontSize: 14,
+              color: colors.text
             }}
           />
         </View>
@@ -97,22 +118,21 @@ export function DietPlansScreen() {
       {/* CATEGORIES */}
       <View
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           paddingVertical: 6
         }}
       >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16
-          }}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
         >
           <View style={{ flexDirection: 'row' }}>
             {categories.map((category, index) => {
               const active = selectedCategory === category;
+
               return (
                 <TouchableOpacity
                   key={category}
@@ -121,18 +141,18 @@ export function DietPlansScreen() {
                     paddingHorizontal: 14,
                     paddingVertical: 6,
                     borderRadius: 14,
-                    backgroundColor: active ? '#00c056ff' : '#f3f4f6',
+                    backgroundColor: active ? colors.primary : colors.input,
                     marginRight: index !== categories.length - 1 ? 10 : 0
                   }}
                 >
                   <Text
                     style={{
-                      color: active ? 'white' : '#374151',
+                      color: active ? 'white' : colors.text,
                       fontWeight: '600',
                       fontSize: 13
                     }}
                   >
-                    {category}
+                    {categoryLabel(category)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -155,7 +175,7 @@ export function DietPlansScreen() {
             key={plan.id}
             onPress={() => openDietDetail(plan.id)}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.card,
               borderRadius: 12,
               overflow: 'hidden',
               shadowColor: '#000',
@@ -179,39 +199,39 @@ export function DietPlansScreen() {
                   position: 'absolute',
                   right: 10,
                   top: 10,
-                  backgroundColor: 'white',
+                  backgroundColor: colors.card,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 12
                 }}
               >
-                <Text style={{ color: '#00c056ff', fontWeight: '500' }}>
-                  {plan.category}
+                <Text style={{ color: colors.primary, fontWeight: '500' }}>
+                  {categoryLabel((plan.category as DietCategory) ?? 'All')}
                 </Text>
               </View>
             </View>
 
             {/* DETAILS */}
             <View style={{ padding: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 4 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
                 {plan.name}
               </Text>
 
-              <Text style={{ color: '#4b5563', marginBottom: 10 }}>
+              <Text style={{ color: colors.muted, marginBottom: 10 }}>
                 {plan.description}
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <Stat icon={Clock} value={plan.duration} />
-                <Stat icon={Flame} value={`${plan.calories} kcal`} />
+                <Stat icon={Flame} value={`${plan.calories} ${t('common.kcal')}`} />
               </View>
             </View>
           </TouchableOpacity>
         ))}
 
         {filteredPlans.length === 0 && (
-          <Text style={{ textAlign: 'center', paddingVertical: 40, color: '#6b7280' }}>
-            No diet plans found
+          <Text style={{ textAlign: 'center', paddingVertical: 40, color: colors.muted }}>
+            {t('dietPlans.noneFound')}
           </Text>
         )}
       </ScrollView>
@@ -223,7 +243,7 @@ export function DietPlansScreen() {
           position: 'absolute',
           bottom: 95,
           right: 20,
-          backgroundColor: '#00c056ff',
+          backgroundColor: colors.primary,
           width: 60,
           height: 60,
           borderRadius: 30,
@@ -244,10 +264,12 @@ export function DietPlansScreen() {
 }
 
 function Stat({ icon: Icon, value }: { icon: any; value: string }) {
+  const colors = useTheme();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Icon size={16} color="#6b7280" />
-      <Text style={{ color: '#6b7280', fontSize: 13 }}>{value}</Text>
+      <Icon size={16} color={colors.muted} />
+      <Text style={{ color: colors.muted, fontSize: 13 }}>{value}</Text>
     </View>
   );
 }

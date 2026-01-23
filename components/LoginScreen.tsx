@@ -1,224 +1,349 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  type KeyboardTypeOptions
 } from 'react-native';
 import { Mail, Lock, User, Leaf } from 'lucide-react-native';
 import { useApp } from './AppContext';
 import { signup, login as apiLogin } from './api';
+import { useT } from './i18n';
+import { useTheme } from './theme';
 
 export function LoginScreen() {
-    const [isSignUp, setIsSignUp] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
-    const { login } = useApp();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
 
-    // WALIDACJA
-    const validate = () => {
-        const newErrors: typeof errors = {};
-        if (isSignUp && name.trim().length < 2) newErrors.name = 'Name is too short';
-        if (!email.includes('@')) newErrors.email = 'Invalid email address';
-        if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+  const { login, language, setLanguage, theme  } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
-    const handleSubmit = async () => {
+  // DEV BYPASS (offline login) - tylko do testów
+  // Dane: dev@local / dev
+  const isDevBypass = useMemo(() => {
+    return (
+      __DEV__ &&
+      !isSignUp &&
+      email.trim().toLowerCase() === 'dev@local' &&
+      password === 'dev'
+    );
+  }, [email, password, isSignUp]);
+
+  const validate = () => {
+    const newErrors: typeof errors = {};
+
+    if (isSignUp && name.trim().length < 2) newErrors.name = t('err.nameShort');
+    if (!email.includes('@')) newErrors.email = t('err.badEmail');
+
+    // wyjątek: dev bypass może mieć krótkie hasło
+    if (!isDevBypass && password.length < 6) newErrors.password = t('err.passShort');
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
     if (!validate()) return;
+
+    // DEV BYPASS
+    if (isDevBypass) {
+      setErrors({});
+      setLoading(true);
+
+      login({
+        access_token: 'dev-access-token',
+        refresh_token: 'dev-refresh-token'
+      } as any);
+
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
-        if (isSignUp) {
-            await signup({ email, password });
-            const tokens = await apiLogin({ email, password });
-            login(tokens);
-        } else {
-            const tokens = await apiLogin({ email, password });
-            login(tokens);
-        }
+      if (isSignUp) {
+        await signup({ email, password });
+        const tokens = await apiLogin({ email, password });
+        login(tokens);
+      } else {
+        const tokens = await apiLogin({ email, password });
+        login(tokens);
+      }
     } catch (err: unknown) {
-        if (err instanceof Error) {
-            setErrors({ email: err.message });
-        } else {
-            setErrors({ email: 'Something went wrong' });
-        }
+      if (err instanceof Error) {
+        setErrors({ email: err.message });
+      } else {
+        setErrors({ email: t('err.generic') });
+      }
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
-
-    return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-        >
-            <ScrollView
-                contentContainerStyle={{
-                    flexGrow: 1,
-                    backgroundColor: '#00c056ff',
-                    justifyContent: 'center',
-                    padding: 20
-                }}
-            >
-                {/* LOGO */}
-                <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                    <Leaf size={80} color="#ffffffff" />
-                    <Text style={{ fontSize: 32, color: 'white', fontWeight: '700', marginTop: 10 }}>
-                        DailyBites
-                    </Text>
-                    <Text style={{ color: '#f5f5f5ff', marginTop: 4 }}>
-                        Your personal diet companion
-                    </Text>
-                </View>
-
-                {/* FORM */}
-                <View style={{ borderRadius: 24, padding: 24, backgroundColor: '#ffffff22' }}>
-                    {/* TABS */}
-                    <View style={{ flexDirection: 'row', marginBottom: 20 }}>
-                        <TouchableOpacity
-                            onPress={() => setIsSignUp(false)}
-                            style={{
-                                flex: 1,
-                                paddingVertical: 12,
-                                backgroundColor: !isSignUp ? '#ffffffff' : '#aecfbcff',
-                                borderRadius: 12,
-                                alignItems: 'center',
-                                marginRight: 6
-                            }}
-                        >
-                            <Text style={{ color: !isSignUp ? '#3a3a3aff' : '#ffffffff', fontWeight: '600' }}>
-                                Login
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setIsSignUp(true)}
-                            style={{
-                                flex: 1,
-                                paddingVertical: 12,
-                                backgroundColor: isSignUp ? '#ffffffff' : '#aecfbcff',
-                                borderRadius: 12,
-                                alignItems: 'center',
-                                marginLeft: 6
-                            }}
-                        >
-                            <Text style={{ color: isSignUp ? '#3a3a3aff' : '#ffffffff', fontWeight: '600' }}>
-                                Sign Up
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* NAME FIELD */}
-                    {isSignUp && (
-                        <Field
-                            icon={User}
-                            value={name}
-                            onChange={setName}
-                            placeholder="Full Name"
-                            error={errors.name}
-                        />
-                    )}
-
-                    {/* EMAIL */}
-                    <Field
-                        icon={Mail}
-                        value={email}
-                        onChange={setEmail}
-                        placeholder="Email"
-                        error={errors.email}
-                    />
-
-                    {/* PASSWORD */}
-                    <Field
-                        icon={Lock}
-                        value={password}
-                        onChange={setPassword}
-                        placeholder="Password"
-                        secure
-                        error={errors.password}
-                    />
-
-                    {/* FORGOT PASSWORD */}
-                    {!isSignUp && (
-                        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 16 }}>
-                            <Text style={{ color: '#f5f5f5ff', fontWeight: '500' }}>Forgot password?</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* SUBMIT */}
-                    <TouchableOpacity
-                        onPress={handleSubmit}
-                        disabled={loading}
-                        style={{
-                            backgroundColor: loading ? '#cccccc' : '#ffffffff',
-                            paddingVertical: 14,
-                            borderRadius: 12,
-                            alignItems: 'center'
-                        }}
-                    >
-                        <Text style={{ color: '#3a3a3aff', fontWeight: '700', fontSize: 16 }}>
-                            {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Login'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* TERMS */}
-                    {isSignUp && (
-                        <Text style={{ textAlign: 'center', color: '#f5f5f5ff', marginTop: 16 }}>
-                            By signing up, you agree to our Terms & Privacy Policy
-                        </Text>
-                    )}
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+  const showForgotPasswordInfo = () => {
+    Alert.alert(
+      t('login.forgot.title'),
+      t('login.forgot.msg'),
+      [{ text: t('common.ok') }]
     );
+  };
+
+  // Login ma swoje “brand” tło – można je zostawić jako stałe,
+  // ale teksty i inputy muszą być theme-aware.
+  const brandBg = theme === 'dark' ? '#0b3d2a' : '#00c056ff';
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          backgroundColor: brandBg,
+          justifyContent: 'center',
+          padding: 20
+        }}
+      >
+        {/* LANGUAGE SWITCH */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <LangBtn
+            label="PL"
+            active={language === 'pl'}
+            onPress={() => setLanguage('pl')}
+            colors={colors}
+          />
+          <View style={{ width: 8 }} />
+          <LangBtn
+            label="EN"
+            active={language === 'en'}
+            onPress={() => setLanguage('en')}
+            colors={colors}
+          />
+        </View>
+
+        {/* LOGO */}
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <Leaf size={80} color="#ffffff" />
+          <Text style={{ fontSize: 32, color: 'white', fontWeight: '700', marginTop: 10 }}>
+            DailyBites
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.90)', marginTop: 4 }}>
+            {t('login.tagline')}
+          </Text>
+        </View>
+
+        {/* FORM */}
+        <View
+          style={{
+            borderRadius: 24,
+            padding: 24,
+            backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.25)' : '#ffffff22',
+            borderWidth: 1,
+            borderColor: theme === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'
+          }}
+        >
+          {/* TABS */}
+          <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+            <TouchableOpacity
+              onPress={() => setIsSignUp(false)}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                backgroundColor: !isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                borderRadius: 12,
+                alignItems: 'center',
+                marginRight: 6
+              }}
+            >
+              <Text style={{ color: !isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
+                {t('login.tab.login')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsSignUp(true)}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                backgroundColor: isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                borderRadius: 12,
+                alignItems: 'center',
+                marginLeft: 6
+              }}
+            >
+              <Text style={{ color: isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
+                {t('login.tab.signup')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* NAME FIELD */}
+          {isSignUp && (
+            <Field
+              icon={User}
+              value={name}
+              onChange={setName}
+              placeholder={t('login.name.placeholder')}
+              error={errors.name}
+              colors={colors}
+            />
+          )}
+
+          {/* EMAIL */}
+          <Field
+            icon={Mail}
+            value={email}
+            onChange={setEmail}
+            placeholder={t('login.email.placeholder')}
+            error={errors.email}
+            keyboardType="email-address"
+            colors={colors}
+          />
+
+          {/* PASSWORD */}
+          <Field
+            icon={Lock}
+            value={password}
+            onChange={setPassword}
+            placeholder={t('login.password.placeholder')}
+            secure
+            error={errors.password}
+            colors={colors}
+          />
+
+          {/* FORGOT PASSWORD */}
+          {!isSignUp && (
+            <TouchableOpacity
+              onPress={showForgotPasswordInfo}
+              style={{ alignSelf: 'flex-end', marginBottom: 16 }}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.90)', fontWeight: '500' }}>
+                {t('login.forgot')}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* SUBMIT */}
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={loading}
+            style={{
+              backgroundColor: loading ? 'rgba(255,255,255,0.7)' : '#ffffff',
+              paddingVertical: 14,
+              borderRadius: 12,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 16 }}>
+              {loading ? t('login.wait') : isSignUp ? t('login.create') : t('login.tab.login')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* TERMS */}
+          {isSignUp && (
+            <Text style={{ textAlign: 'center', color: 'rgba(255,255,255,0.90)', marginTop: 16 }}>
+              {t('login.terms')}
+            </Text>
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function LangBtn({
+  label,
+  active,
+  onPress,
+  colors
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  colors: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: active ? '#ffffff' : 'rgba(255,255,255,0.45)',
+        borderWidth: 1,
+        borderColor: active ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)'
+      }}
+    >
+      <Text style={{ fontWeight: '700', color: '#1f2937' }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
 }
 
 type FieldProps = {
-    icon: any;
-    value: string;
-    onChange: (text: string) => void;
-    placeholder: string;
-    secure?: boolean;
-    error?: string;
+  icon: any;
+  value: string;
+  onChange: (text: string) => void;
+  placeholder: string;
+  secure?: boolean;
+  error?: string;
+  keyboardType?: KeyboardTypeOptions;
+  colors: ReturnType<typeof useTheme>;
 };
 
-function Field({ icon: Icon, value, onChange, placeholder, secure = false, error }: FieldProps) {
-    return (
-        <View style={{ marginBottom: 16 }}>
-            <View style={{ position: 'absolute', left: 12, top: 16 }}>
-                <Icon size={18} color="#9ca3af" />
-            </View>
-            <TextInput
-                placeholder={placeholder}
-                value={value}
-                onChangeText={onChange}
-                secureTextEntry={secure}
-                autoCapitalize="none"
-                keyboardType={placeholder === 'Email' ? 'email-address' : 'default'}
-                style={{
-                    paddingLeft: 40,
-                    paddingVertical: 12,
-                    backgroundColor: '#f9fafb',
-                    borderWidth: 1,
-                    borderColor: error ? '#ff4d4d' : '#ddddddff',
-                    borderRadius: 12,
-                    fontSize: 15,
-                    color: '#222222ff'
-                }}
-            />
-            {error && (
-                <Text style={{ color: '#ff4d4d', marginTop: 4, marginLeft: 4, fontSize: 13 }}>
-                    {error}
-                </Text>
-            )}
-        </View>
-    );
+function Field({
+  icon: Icon,
+  value,
+  onChange,
+  placeholder,
+  secure = false,
+  error,
+  keyboardType,
+  colors
+}: FieldProps) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ position: 'absolute', left: 12, top: 16 }}>
+        <Icon size={18} color={colors.muted} />
+      </View>
+
+      <TextInput
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        value={value}
+        onChangeText={onChange}
+        secureTextEntry={secure}
+        autoCapitalize="none"
+        keyboardType={keyboardType ?? 'default'}
+        style={{
+          paddingLeft: 40,
+          paddingVertical: 12,
+          backgroundColor: colors.input,
+          borderWidth: 1,
+          borderColor: error ? '#ff4d4d' : colors.border,
+          borderRadius: 12,
+          fontSize: 15,
+          color: colors.text
+        }}
+      />
+
+      {error && (
+        <Text style={{ color: '#ff4d4d', marginTop: 4, marginLeft: 4, fontSize: 13 }}>
+          {error}
+        </Text>
+      )}
+    </View>
+  );
 }

@@ -1,36 +1,57 @@
 import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
 import { ArrowLeft, Clock, Flame, Check, Calendar } from 'lucide-react-native';
 import { useApp } from './AppContext';
+import { useT } from './i18n';
+import { useTheme } from './theme';
+
+type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
 export function DietDetailScreen({ dietId }: { dietId: string }) {
   const { dietPlans, navigate } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
   const plan = dietPlans.find(p => p.id === dietId);
 
+  const categoryLabel = (cat: DietCategory) => {
+    switch (cat) {
+      case 'Balanced':
+        return t('dietCat.balanced');
+      case 'Weight Loss':
+        return t('dietCat.weightLoss');
+      case 'Vegan':
+        return t('dietCat.vegan');
+      case 'Keto':
+        return t('dietCat.keto');
+    }
+  };
+
   if (!plan) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#6b7280' }}>Diet plan not found</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
+        <Text style={{ color: colors.muted }}>{t('dietDetail.notFound')}</Text>
       </View>
     );
   }
 
   const benefits = [
-    'Balanced macronutrient distribution',
-    'Easy to follow meal structure',
-    'Supports sustainable weight management',
-    'Includes variety of whole foods',
-    'Flexible meal timing options'
+    t('dietDetail.benefit1'),
+    t('dietDetail.benefit2'),
+    t('dietDetail.benefit3'),
+    t('dietDetail.benefit4'),
+    t('dietDetail.benefit5')
   ];
 
   const imageSource =
     plan.image ??
     'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
 
+  const cat = (plan.category as DietCategory) ?? 'Balanced';
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* HEADER IMAGE */}
-      <View style={{ height: 220, backgroundColor: '#10b981' }}>
+      <View style={{ height: 220, backgroundColor: colors.primary }}>
         <Image
           source={{ uri: imageSource }}
           style={{ width: '100%', height: '100%', opacity: 0.85 }}
@@ -45,7 +66,7 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
             left: 20,
             width: 40,
             height: 40,
-            backgroundColor: 'white',
+            backgroundColor: colors.card,
             borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
@@ -54,51 +75,55 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
             shadowRadius: 4
           }}
         >
-          <ArrowLeft size={20} color="#374151" />
+          <ArrowLeft size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={{ paddingHorizontal: 20, marginTop: -20 }}>
         {/* INFO CARD */}
-        <View style={{
-          backgroundColor: 'white',
-          borderRadius: 16,
-          padding: 20,
-          shadowColor: '#000',
-          shadowOpacity: 0.08,
-          shadowRadius: 6,
-          marginBottom: 16
-        }}>
-          <Text style={{ fontSize: 22, fontWeight: '600', color: '#111827', marginBottom: 4 }}>
+        <View
+          style={{
+            backgroundColor: colors.card,
+            borderRadius: 16,
+            padding: 20,
+            shadowColor: '#000',
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            marginBottom: 16
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
             {plan.name}
           </Text>
 
-          <Text style={{
-            alignSelf: 'flex-start',
-            backgroundColor: '#cafde3ff',
-            color: '#00c056ff',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 12,
-            fontSize: 13,
-            marginBottom: 12
-          }}>
-            {plan.category}
+          <Text
+            style={{
+              alignSelf: 'flex-start',
+              backgroundColor: colors.input,
+              color: colors.primary,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12,
+              fontSize: 13,
+              marginBottom: 12
+            }}
+          >
+            {categoryLabel(cat)}
           </Text>
 
-          <Text style={{ color: '#4b5563', marginBottom: 16 }}>
+          <Text style={{ color: colors.muted, marginBottom: 16 }}>
             {plan.description}
           </Text>
 
           {/* STATS */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Stat icon={Clock} label="Duration" value={plan.duration} />
-            <Stat icon={Flame} label="Calories" value={`${plan.calories} kcal`} />
+            <Stat icon={Clock} label={t('dietDetail.duration')} value={plan.duration} />
+            <Stat icon={Flame} label={t('dietDetail.calories')} value={`${plan.calories} ${t('common.kcal')}`} />
           </View>
 
           <TouchableOpacity
             style={{
-              backgroundColor: '#00c056ff',
+              backgroundColor: colors.primary,
               paddingVertical: 14,
               borderRadius: 12,
               flexDirection: 'row',
@@ -108,27 +133,29 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
           >
             <Calendar size={18} color="#fff" />
             <Text style={{ color: 'white', marginLeft: 8, fontWeight: '600' }}>
-              Start This Plan
+              {t('dietDetail.startPlan')}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* BENEFITS */}
-        <Section title="Key Benefits">
+        <Section title={t('dietDetail.keyBenefits')}>
           {benefits.map((benefit, i) => (
             <View key={i} style={{ flexDirection: 'row', marginBottom: 8 }}>
-              <View style={{
-                width: 22,
-                height: 22,
-                backgroundColor: '#d1fae5',
-                borderRadius: 11,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 8
-              }}>
-                <Check size={14} color="#00c056ff" />
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  backgroundColor: colors.input,
+                  borderRadius: 11,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 8
+                }}
+              >
+                <Check size={14} color={colors.primary} />
               </View>
-              <Text style={{ color: '#4b5563' }}>{benefit}</Text>
+              <Text style={{ color: colors.muted }}>{benefit}</Text>
             </View>
           ))}
         </Section>
@@ -138,29 +165,35 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
 }
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  const colors = useTheme();
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Icon size={18} color="#00c056ff" />
+      <Icon size={18} color={colors.primary} />
       <View style={{ marginLeft: 6 }}>
-        <Text style={{ color: '#6b7280', fontSize: 12 }}>{label}</Text>
-        <Text style={{ color: '#111827', fontWeight: '600' }}>{value}</Text>
+        <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
+        <Text style={{ color: colors.text, fontWeight: '600' }}>{value}</Text>
       </View>
     </View>
   );
 }
 
 function Section({ title, children }: { title: string; children: any }) {
+  const colors = useTheme();
+
   return (
-    <View style={{
-      backgroundColor: 'white',
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 16,
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 4
-    }}>
-      <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 12 }}>
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4
+      }}
+    >
+      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 12 }}>
         {title}
       </Text>
       {children}

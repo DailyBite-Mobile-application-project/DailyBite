@@ -5,7 +5,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  TextInput
+  TextInput,
+  type ViewStyle
 } from 'react-native';
 import {
   ArrowLeft,
@@ -17,16 +18,22 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
+import { useT } from './i18n';
+import { useTheme } from './theme';
+
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export function ScheduleScreen() {
-  const { navigate, scheduledMeals, setScheduledMeals, dishes } = useApp();
+  const { navigate, scheduledMeals, setScheduledMeals, dishes, theme } = useApp();
+  const t = useT();
+  const colors = useTheme();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
 
   const [newDishId, setNewDishId] = useState<string | null>(null);
-  const [newMealType, setNewMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | ''>('');
+  const [newMealType, setNewMealType] = useState<MealType | ''>('');
   const [newTime, setNewTime] = useState('');
 
   const daysInMonth = new Date(
@@ -42,8 +49,28 @@ export function ScheduleScreen() {
   ).getDay();
 
   const monthNames = [
-    'January','February','March','April','May','June',
-    'July','August','September','October','November','December'
+    t('month.january'),
+    t('month.february'),
+    t('month.march'),
+    t('month.april'),
+    t('month.may'),
+    t('month.june'),
+    t('month.july'),
+    t('month.august'),
+    t('month.september'),
+    t('month.october'),
+    t('month.november'),
+    t('month.december')
+  ];
+
+  const weekDays = [
+    t('weekday.sun'),
+    t('weekday.mon'),
+    t('weekday.tue'),
+    t('weekday.wed'),
+    t('weekday.thu'),
+    t('weekday.fri'),
+    t('weekday.sat')
   ];
 
   const prevMonth = () =>
@@ -72,7 +99,7 @@ export function ScheduleScreen() {
       date: selectedDate,
       time: newTime,
       dishId: newDishId,
-      type: newMealType
+      type: newMealType as MealType
     };
 
     setScheduledMeals([...scheduledMeals, newMeal]);
@@ -82,14 +109,25 @@ export function ScheduleScreen() {
     setNewTime('');
   };
 
+  const navBtnStyle: ViewStyle = {
+    width: 40,
+    height: 40,
+    backgroundColor: colors.soft,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: theme === 'dark' ? 1 : 0,
+    borderColor: theme === 'dark' ? colors.border : 'transparent'
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb', paddingBottom: 70 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
       {/* HEADER */}
       <View
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           paddingHorizontal: 20,
           paddingVertical: 14
         }}
@@ -100,18 +138,20 @@ export function ScheduleScreen() {
             style={{
               width: 40,
               height: 40,
-              backgroundColor: '#f3f4f6',
+              backgroundColor: colors.soft,
               borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: 12
+              marginRight: 12,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
             }}
           >
-            <ArrowLeft size={20} color="#374151" />
+            <ArrowLeft size={20} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 22, fontWeight: '600', color: '#111827' }}>
-            Schedule
+          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+            {t('schedule.title')}
           </Text>
         </View>
       </View>
@@ -119,9 +159,9 @@ export function ScheduleScreen() {
       {/* CALENDAR HEADER */}
       <View
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderColor: '#e5e7eb',
+          borderColor: colors.border,
           paddingHorizontal: 20,
           paddingVertical: 14
         }}
@@ -133,31 +173,28 @@ export function ScheduleScreen() {
             marginBottom: 12
           }}
         >
-          <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }}>
+          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.text }}>
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              onPress={prevMonth}
-              style={navBtnStyle}
-            >
-              <ChevronLeft size={20} color="#374151" />
+            <TouchableOpacity onPress={prevMonth} style={navBtnStyle}>
+              <ChevronLeft size={20} color={colors.text} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={nextMonth}
-              style={navBtnStyle}
-            >
-              <ChevronRight size={20} color="#374151" />
+            <TouchableOpacity onPress={nextMonth} style={navBtnStyle}>
+              <ChevronRight size={20} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* DAYS OF WEEK */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-            <Text key={d} style={{ width: '14%', textAlign: 'center', color: '#6b7280' }}>
+          {weekDays.map((d) => (
+            <Text
+              key={d}
+              style={{ width: '14%', textAlign: 'center', color: colors.subtext }}
+            >
               {d}
             </Text>
           ))}
@@ -178,12 +215,12 @@ export function ScheduleScreen() {
             const isSelected = selectedDate === dateStr;
 
             const bg = isToday
-              ? '#00c056ff'
+              ? colors.primary
               : isSelected
-              ? '#d1fae5'
-              : '#f3f4f6';
+                ? colors.primarySoft
+                : colors.soft;
 
-            const color = isToday ? 'white' : '#111827';
+            const textColor = isToday ? colors.primaryText : colors.text;
 
             return (
               <TouchableOpacity
@@ -202,10 +239,12 @@ export function ScheduleScreen() {
                     borderRadius: 10,
                     backgroundColor: bg,
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    borderWidth: theme === 'dark' ? 1 : 0,
+                    borderColor: theme === 'dark' ? colors.border : 'transparent'
                   }}
                 >
-                  <Text style={{ color }}>{day}</Text>
+                  <Text style={{ color: textColor }}>{day}</Text>
                 </View>
 
                 {hasMeals && (
@@ -214,7 +253,7 @@ export function ScheduleScreen() {
                       width: 6,
                       height: 6,
                       borderRadius: 3,
-                      backgroundColor: isToday ? 'white' : '#00c056ff',
+                      backgroundColor: isToday ? colors.primaryText : colors.primary,
                       marginTop: 2
                     }}
                   />
@@ -235,14 +274,14 @@ export function ScheduleScreen() {
               marginBottom: 6
             }}
           >
-            <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }}>
-              Meals for {selectedDate}
+            <Text style={{ fontSize: 20, fontWeight: '600', color: colors.text }}>
+              {t('schedule.mealsFor', { date: selectedDate })}
             </Text>
 
             <TouchableOpacity
               onPress={() => setShowAddMeal(true)}
               style={{
-                backgroundColor: '#00c056ff',
+                backgroundColor: colors.primary,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: 10,
@@ -251,58 +290,61 @@ export function ScheduleScreen() {
               }}
             >
               <Plus size={16} color="white" />
-              <Text style={{ color: 'white', marginLeft: 6 }}>Add</Text>
+              <Text style={{ color: 'white', marginLeft: 6 }}>
+                {t('common.add')}
+              </Text>
             </TouchableOpacity>
           </View>
 
           {mealsForDate(selectedDate).map(meal => {
             const dish = dishes.find(d => d.id === meal.dishId);
+
             return (
               <View
                 key={meal.id}
                 style={{
-                  backgroundColor: 'white',
+                  backgroundColor: colors.card,
                   padding: 16,
                   borderRadius: 16,
                   flexDirection: 'row',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   shadowColor: '#000',
-                  shadowOpacity: 0.08,
-                  shadowRadius: 6
+                  shadowOpacity: theme === 'dark' ? 0 : 0.08,
+                  shadowRadius: 6,
+                  borderWidth: theme === 'dark' ? 1 : 0,
+                  borderColor: theme === 'dark' ? colors.border : 'transparent'
                 }}
               >
                 <View>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
-                    {dish?.name ?? 'Unknown Dish'}
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                    {dish?.name ?? t('main.unknownDish')}
                   </Text>
-                  <Text style={{ color: '#6b7280' }}>
-                    {meal.time} • {meal.type}
+                  <Text style={{ color: colors.subtext }}>
+                    {meal.time} • {t(`meal.${meal.type}`)}
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  onPress={() =>
-                    setScheduledMeals(scheduledMeals.filter(m => m.id !== meal.id))
-                  }
+                  onPress={() => setScheduledMeals(scheduledMeals.filter(m => m.id !== meal.id))}
                   style={{
                     width: 36,
                     height: 36,
-                    backgroundColor: '#fee2e2',
+                    backgroundColor: colors.dangerSoft,
                     borderRadius: 10,
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
                 >
-                  <Trash2 size={16} color="#b91c1c" />
+                  <Trash2 size={16} color={colors.danger} />
                 </TouchableOpacity>
               </View>
             );
           })}
 
           {mealsForDate(selectedDate).length === 0 && (
-            <Text style={{ textAlign: 'center', color: '#6b7280', paddingVertical: 20 }}>
-              No meals scheduled for this day
+            <Text style={{ textAlign: 'center', color: colors.subtext, paddingVertical: 20 }}>
+              {t('schedule.noMealsThisDay')}
             </Text>
           )}
         </ScrollView>
@@ -313,69 +355,86 @@ export function ScheduleScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.3)',
+            backgroundColor: colors.overlay,
             justifyContent: 'center',
             padding: 20
           }}
         >
           <View
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.card,
               borderRadius: 20,
-              padding: 20
+              padding: 20,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
             }}
           >
-            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 14 }}>
-              Add Meal
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 14, color: colors.text }}>
+              {t('schedule.addMealTitle')}
             </Text>
 
-            <Text style={{ marginBottom: 4 }}>Dish</Text>
-            <Picker
-              selectedValue={newDishId}
-              onValueChange={v => setNewDishId(v)}
+            <Text style={{ marginBottom: 6, color: colors.text }}>{t('schedule.dishLabel')}</Text>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: colors.input
+              }}
             >
-              <Picker.Item label="Select dish" value={null} />
-              {dishes.map(d => (
-                <Picker.Item key={d.id} label={d.name} value={d.id} />
-              ))}
-            </Picker>
+              <Picker selectedValue={newDishId} onValueChange={(v) => setNewDishId(v)}>
+                <Picker.Item label={t('schedule.selectDish')} value={null} />
+                {dishes.map(d => (
+                  <Picker.Item key={d.id} label={d.name} value={d.id} />
+                ))}
+              </Picker>
+            </View>
 
-            <Text style={{ marginBottom: 4, marginTop: 12 }}>Meal Type</Text>
-            <Picker
-              selectedValue={newMealType}
-              onValueChange={v => setNewMealType(v)}
+            <Text style={{ marginBottom: 6, marginTop: 12, color: colors.text }}>
+              {t('schedule.mealTypeLabel')}
+            </Text>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: colors.input
+              }}
             >
-              <Picker.Item label="Select type" value="" />
-              <Picker.Item label="Breakfast" value="breakfast" />
-              <Picker.Item label="Lunch" value="lunch" />
-              <Picker.Item label="Dinner" value="dinner" />
-              <Picker.Item label="Snack" value="snack" />
-            </Picker>
+              <Picker selectedValue={newMealType} onValueChange={(v) => setNewMealType(v)}>
+                <Picker.Item label={t('schedule.selectType')} value="" />
+                <Picker.Item label={t('meal.breakfast')} value="breakfast" />
+                <Picker.Item label={t('meal.lunch')} value="lunch" />
+                <Picker.Item label={t('meal.dinner')} value="dinner" />
+                <Picker.Item label={t('meal.snack')} value="snack" />
+              </Picker>
+            </View>
 
-            <Text style={{ marginBottom: 4, marginTop: 12 }}>Time (HH:MM)</Text>
+            <Text style={{ marginBottom: 6, marginTop: 12, color: colors.text }}>
+              {t('schedule.timeLabel')}
+            </Text>
             <TextInput
-              placeholder="e.g. 08:30"
+              placeholder={t('schedule.timePlaceholder')}
+              placeholderTextColor={colors.muted}
               value={newTime}
               onChangeText={setNewTime}
               style={{
-                backgroundColor: '#f3f4f6',
-                padding: 10,
-                borderRadius: 10
+                backgroundColor: colors.input,
+                color: colors.text,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: 12,
+                borderRadius: 12
               }}
             />
 
-            {/* MODAL ACTION */}
-            <View
-              style={{
-                flexDirection: 'row',
-                marginTop: 20,
-                justifyContent: 'space-between'
-              }}
-            >
+            <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
               <TouchableOpacity
                 onPress={addMeal}
                 style={{
-                  backgroundColor: '#00c056ff',
+                  backgroundColor: colors.primary,
                   padding: 12,
                   borderRadius: 12,
                   flex: 1,
@@ -383,21 +442,27 @@ export function ScheduleScreen() {
                   marginRight: 8
                 }}
               >
-                <Text style={{ color: 'white', fontWeight: '600' }}>Add Meal</Text>
+                <Text style={{ color: colors.primaryText, fontWeight: '600' }}>
+                  {t('schedule.addMealButton')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setShowAddMeal(false)}
                 style={{
-                  backgroundColor: '#e5e7eb',
+                  backgroundColor: colors.soft,
                   padding: 12,
                   borderRadius: 12,
                   flex: 1,
                   alignItems: 'center',
-                  marginLeft: 8
+                  marginLeft: 8,
+                  borderWidth: theme === 'dark' ? 1 : 0,
+                  borderColor: theme === 'dark' ? colors.border : 'transparent'
                 }}
               >
-                <Text style={{ color: '#374151', fontWeight: '600' }}>Cancel</Text>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>
+                  {t('common.cancel')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -408,15 +473,3 @@ export function ScheduleScreen() {
     </View>
   );
 }
-
-import { ViewStyle } from 'react-native';
-
-const navBtnStyle: ViewStyle = {
-  width: 40,
-  height: 40,
-  backgroundColor: '#f3f4f6',
-  borderRadius: 20,
-  alignItems: 'center',
-  justifyContent: 'center'
-};
-

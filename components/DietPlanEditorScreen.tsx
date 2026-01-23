@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,17 @@ import {
 import { ArrowLeft, Save, Trash2, Copy, Camera, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from './AppContext';
+import { useT } from './i18n';
+import { useTheme } from './theme';
+
+type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
 export function DietPlanEditorScreen() {
+  const t = useT();
+  const colors = useTheme();
+
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const {
     navigate,
     dietPlans,
@@ -34,7 +43,9 @@ export function DietPlanEditorScreen() {
   const [durationDays, setDurationDays] = useState(
     existingPlan?.duration ? existingPlan.duration.replace(/\D/g, '') : ''
   );
-  const [category, setCategory] = useState(existingPlan?.category ?? 'Balanced');
+  const [category, setCategory] = useState<DietCategory>(
+    (existingPlan?.category as DietCategory) ?? 'Balanced'
+  );
   const [image, setImage] = useState<string | null>(existingPlan?.image ?? null);
   const [assignedDishes, setAssignedDishes] = useState<string[]>(
     existingPlan?.dishIds ?? []
@@ -73,30 +84,58 @@ export function DietPlanEditorScreen() {
     );
   };
 
+  const categoryLabel = (cat: DietCategory) => {
+    switch (cat) {
+      case 'Balanced':
+        return t('dietCat.balanced');
+      case 'Weight Loss':
+        return t('dietCat.weightLoss');
+      case 'Vegan':
+        return t('dietCat.vegan');
+      case 'Keto':
+        return t('dietCat.keto');
+    }
+  };
+
   const savePlan = () => {
     if (!name.trim()) {
-      Alert.alert('Missing Name', 'Please enter a plan name.');
+      Alert.alert(
+        t('planEditor.alert.missingName.title'),
+        t('planEditor.alert.missingName.msg')
+      );
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert('Missing Description', 'Please enter a plan description.');
+      Alert.alert(
+        t('planEditor.alert.missingDesc.title'),
+        t('planEditor.alert.missingDesc.msg')
+      );
       return;
     }
 
     if (!durationDays.trim()) {
-      Alert.alert('Missing Duration', 'Please enter number of days.');
+      Alert.alert(
+        t('planEditor.alert.missingDuration.title'),
+        t('planEditor.alert.missingDuration.msg')
+      );
       return;
     }
 
     const daysNumber = Number(durationDays);
     if (isNaN(daysNumber) || daysNumber < 1) {
-      Alert.alert('Invalid Duration', 'Duration must be a number greater than 0.');
+      Alert.alert(
+        t('planEditor.alert.invalidDuration.title'),
+        t('planEditor.alert.invalidDuration.msg')
+      );
       return;
     }
 
     if (assignedDishes.length === 0) {
-      Alert.alert('No Dishes Assigned', 'Please assign at least one dish.');
+      Alert.alert(
+        t('planEditor.alert.noDishes.title'),
+        t('planEditor.alert.noDishes.msg')
+      );
       return;
     }
 
@@ -104,7 +143,7 @@ export function DietPlanEditorScreen() {
       id: existingPlan?.id ?? Date.now().toString(),
       name,
       description,
-      duration: `${daysNumber} days`,
+      duration: `${daysNumber} ${t('common.days')}`,
       category,
       image,
       dishIds: assignedDishes,
@@ -112,7 +151,7 @@ export function DietPlanEditorScreen() {
     };
 
     if (existingPlan) {
-      setDietPlans(dietPlans.map(p => p.id === existingPlan.id ? newPlan : p));
+      setDietPlans(dietPlans.map(p => (p.id === existingPlan.id ? newPlan : p)));
     } else {
       setDietPlans([...dietPlans, newPlan]);
     }
@@ -126,7 +165,7 @@ export function DietPlanEditorScreen() {
     const cloned = {
       ...existingPlan,
       id: Date.now().toString(),
-      name: existingPlan.name + ' (Copy)'
+      name: `${existingPlan.name} ${t('planEditor.copySuffix')}`
     };
 
     setDietPlans([...dietPlans, cloned]);
@@ -137,12 +176,12 @@ export function DietPlanEditorScreen() {
     if (!existingPlan) return;
 
     Alert.alert(
-      'Delete Plan',
-      'Are you sure you want to delete this plan?',
+      t('planEditor.alert.delete.title'),
+      t('planEditor.alert.delete.msg'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             setDietPlans(dietPlans.filter(p => p.id !== existingPlan.id));
@@ -156,7 +195,10 @@ export function DietPlanEditorScreen() {
   const pickImage = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Camera access is needed.');
+      Alert.alert(
+        t('planEditor.alert.permission.title'),
+        t('planEditor.alert.permission.msg')
+      );
       return;
     }
 
@@ -173,101 +215,104 @@ export function DietPlanEditorScreen() {
   const removeImage = () => setImage(null);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-
+    <View style={styles.screen}>
       {/* HEADER */}
-      <View style={header}>
-        <TouchableOpacity
-          onPress={() => navigate('diet-plans')}
-          style={backBtn}
-        >
-          <ArrowLeft size={20} color="#374151" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigate('diet-plans')} style={styles.backBtn}>
+          <ArrowLeft size={20} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={headerTitle}>
-          {existingPlan ? 'Edit Diet Plan' : 'Add Diet Plan'}
+        <Text style={styles.headerTitle}>
+          {existingPlan ? t('planEditor.titleEdit') : t('planEditor.titleAdd')}
         </Text>
 
-        <TouchableOpacity onPress={savePlan} style={saveBtn}>
+        <TouchableOpacity onPress={savePlan} style={styles.saveBtn}>
           <Save size={16} color="white" />
-          <Text style={saveBtnText}>Save</Text>
+          <Text style={styles.saveBtnText}>{t('common.save')}</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
-
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* IMAGE SECTION */}
-        <Text style={label}>Plan Image</Text>
+        <Text style={styles.label}>{t('planEditor.image')}</Text>
 
         {image ? (
           <View>
-            <Image source={{ uri: image }} style={previewImage} />
-            <TouchableOpacity onPress={removeImage} style={removeImgBtn}>
+            <Image source={{ uri: image }} style={styles.previewImage} />
+            <TouchableOpacity onPress={removeImage} style={styles.removeImgBtn}>
               <X size={18} color="white" />
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity onPress={pickImage} style={addImgBtn}>
+          <TouchableOpacity onPress={pickImage} style={styles.addImgBtn}>
             <Camera size={22} color="white" />
-            <Text style={addImgText}>Add Image</Text>
+            <Text style={styles.addImgText}>{t('planEditor.addImage')}</Text>
           </TouchableOpacity>
         )}
 
         {/* NAME */}
-        <Text style={label}>Plan Name</Text>
+        <Text style={styles.label}>{t('planEditor.name')}</Text>
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Lean Muscle Plan"
-          style={inputStyle}
+          placeholder={t('planEditor.namePh')}
+          placeholderTextColor={colors.muted}
+          style={styles.input}
         />
 
         {/* DESCRIPTION */}
-        <Text style={label}>Description</Text>
+        <Text style={styles.label}>{t('planEditor.desc')}</Text>
         <TextInput
           value={description}
           onChangeText={setDescription}
-          placeholder="Short description..."
-          style={[inputStyle, { height: 80, textAlignVertical: 'top' }]}
+          placeholder={t('planEditor.descPh')}
+          placeholderTextColor={colors.muted}
+          style={[styles.input, styles.textArea]}
           multiline
         />
 
         {/* DURATION */}
-        <Text style={label}>Duration (days)</Text>
+        <Text style={styles.label}>{t('planEditor.durationDays')}</Text>
         <TextInput
           value={durationDays}
           onChangeText={setDurationDays}
           keyboardType="numeric"
-          placeholder="Enter number of days"
-          style={inputStyle}
+          placeholder={t('planEditor.durationPh')}
+          placeholderTextColor={colors.muted}
+          style={styles.input}
         />
 
         {/* NUTRITION SUMMARY */}
-        <Text style={sectionTitle}>Nutrition (calculated)</Text>
+        <Text style={styles.sectionTitle}>{t('planEditor.nutritionCalculated')}</Text>
 
-        <Text style={nutriText}>Calories: {nutrition.calories} kcal</Text>
-        <Text style={nutriText}>Protein: {nutrition.protein} g</Text>
-        <Text style={nutriText}>Carbs: {nutrition.carbs} g</Text>
-        <Text style={nutriText}>Fats: {nutrition.fats} g</Text>
+        <Text style={styles.nutriText}>
+          {t('planEditor.nut.calories')}: {nutrition.calories} {t('common.kcal')}
+        </Text>
+        <Text style={styles.nutriText}>
+          {t('planEditor.nut.protein')}: {nutrition.protein} g
+        </Text>
+        <Text style={styles.nutriText}>
+          {t('planEditor.nut.carbs')}: {nutrition.carbs} g
+        </Text>
+        <Text style={styles.nutriText}>
+          {t('planEditor.nut.fats')}: {nutrition.fats} g
+        </Text>
 
         {/* CATEGORY */}
-        <Text style={label}>Category</Text>
+        <Text style={styles.label}>{t('planEditor.category')}</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-            {['Balanced', 'Weight Loss', 'Vegan', 'Keto'].map(cat => {
+          <View style={styles.catRow}>
+            {(['Balanced', 'Weight Loss', 'Vegan', 'Keto'] as DietCategory[]).map(cat => {
               const active = category === cat;
               return (
                 <TouchableOpacity
                   key={cat}
                   onPress={() => setCategory(cat)}
-                  style={[
-                    catBtn,
-                    active ? catBtnActive : catBtnInactive
-                  ]}
+                  style={[styles.catBtn, active ? styles.catBtnActive : styles.catBtnInactive]}
                 >
-                  <Text style={active ? catTextActive : catTextInactive}>
-                    {cat}
+                  <Text style={active ? styles.catTextActive : styles.catTextInactive}>
+                    {categoryLabel(cat)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -276,219 +321,245 @@ export function DietPlanEditorScreen() {
         </ScrollView>
 
         {/* ASSIGN DISHES */}
-        <Text style={sectionTitle}>Assign Dishes</Text>
+        <Text style={styles.sectionTitle}>{t('planEditor.assignDishes')}</Text>
 
-        {dishes.map(dish => (
-          <TouchableOpacity
-            key={dish.id}
-            onPress={() => toggleDish(dish.id)}
-            style={[
-              dishItem,
-              assignedDishes.includes(dish.id) ? dishItemActive : dishItemInactive
-            ]}
-          >
-            <Text style={dishText}>{dish.name}</Text>
-          </TouchableOpacity>
-        ))}
+        {dishes.map(dish => {
+          const active = assignedDishes.includes(dish.id);
+          return (
+            <TouchableOpacity
+              key={dish.id}
+              onPress={() => toggleDish(dish.id)}
+              style={[styles.dishItem, active ? styles.dishItemActive : styles.dishItemInactive]}
+            >
+              <Text style={styles.dishText}>{dish.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
 
         {/* DUPLICATE */}
         {existingPlan && (
-          <TouchableOpacity onPress={duplicatePlan} style={duplicateBtn}>
+          <TouchableOpacity onPress={duplicatePlan} style={styles.duplicateBtn}>
             <Copy size={18} color="white" />
-            <Text style={duplicateBtnText}>Duplicate Plan</Text>
+            <Text style={styles.duplicateBtnText}>{t('planEditor.duplicate')}</Text>
           </TouchableOpacity>
         )}
 
         {/* DELETE */}
         {existingPlan && (
-          <TouchableOpacity onPress={deletePlan} style={deleteBtn}>
+          <TouchableOpacity onPress={deletePlan} style={styles.deleteBtn}>
             <Trash2 size={18} color="white" />
-            <Text style={deleteBtnText}>Delete Plan</Text>
+            <Text style={styles.deleteBtnText}>{t('planEditor.delete')}</Text>
           </TouchableOpacity>
         )}
-
       </ScrollView>
     </View>
   );
 }
 
-const header: ViewStyle = {
-  backgroundColor: 'white',
-  borderBottomWidth: 1,
-  borderColor: '#e5e7eb',
-  paddingHorizontal: 20,
-  paddingVertical: 12,
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between'
-};
+function makeStyles(colors: ReturnType<typeof useTheme>) {
+  return {
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg
+    } as ViewStyle,
 
-const backBtn: ViewStyle = {
-  width: 40,
-  height: 40,
-  backgroundColor: '#f3f4f6',
-  borderRadius: 20,
-  alignItems: 'center',
-  justifyContent: 'center'
-};
+    header: {
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    } as ViewStyle,
 
-const headerTitle: TextStyle = {
-  fontSize: 20,
-  fontWeight: '600',
-  color: '#111827'
-};
+    backBtn: {
+      width: 40,
+      height: 40,
+      backgroundColor: colors.input,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center'
+    } as ViewStyle,
 
-const saveBtn: ViewStyle = {
-  backgroundColor: '#00c056ff',
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  borderRadius: 10,
-  flexDirection: 'row',
-  alignItems: 'center'
-};
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.text
+    } as TextStyle,
 
-const saveBtnText: TextStyle = {
-  color: 'white',
-  marginLeft: 6,
-  fontWeight: '600'
-};
+    saveBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 10,
+      flexDirection: 'row',
+      alignItems: 'center'
+    } as ViewStyle,
 
-const label: TextStyle = {
-  marginTop: 16,
-  marginBottom: 4,
-  color: '#374151'
-};
+    saveBtnText: {
+      color: colors.primaryText ?? 'white',
+      marginLeft: 6,
+      fontWeight: '600'
+    } as TextStyle,
 
-const previewImage: ImageStyle = {
-  width: '100%',
-  height: 160,
-  borderRadius: 12,
-  marginBottom: 6
-};
+    scrollContent: {
+      padding: 20,
+      paddingBottom: 80
+    } as ViewStyle,
 
-const removeImgBtn: ViewStyle = {
-  position: 'absolute',
-  right: 10,
-  top: 10,
-  backgroundColor: '#ef4444',
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  alignItems: 'center',
-  justifyContent: 'center'
-};
+    label: {
+      marginTop: 16,
+      marginBottom: 4,
+      color: colors.muted
+    } as TextStyle,
 
-const addImgBtn: ViewStyle = {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: 14,
-  paddingVertical: 10,
-  borderRadius: 10,
-  backgroundColor: '#10b981',
-  marginBottom: 6
-};
+    previewImage: {
+      width: '100%',
+      height: 160,
+      borderRadius: 12,
+      marginBottom: 6
+    } as ImageStyle,
 
-const addImgText: TextStyle = {
-  color: 'white',
-  fontWeight: '600',
-  marginLeft: 6
-};
+    removeImgBtn: {
+      position: 'absolute',
+      right: 10,
+      top: 10,
+      backgroundColor: '#ef4444',
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center'
+    } as ViewStyle,
 
-const sectionTitle: TextStyle = {
-  fontSize: 18,
-  fontWeight: '600',
-  marginTop: 22
-};
+    addImgBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.primary,
+      marginBottom: 6
+    } as ViewStyle,
 
-const inputStyle: TextStyle = {
-  backgroundColor: '#ffffff',
-  borderWidth: 1,
-  borderColor: '#e5e7eb',
-  borderRadius: 10,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  fontSize: 14,
-  color: '#111827'
-};
+    addImgText: {
+      color: 'white',
+      fontWeight: '600',
+      marginLeft: 6
+    } as TextStyle,
 
-const nutriText: TextStyle = {
-  color: '#10974dff',
-  fontSize: 16,
-  marginTop: 4
-};
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginTop: 22,
+      color: colors.text
+    } as TextStyle,
 
-const catBtn: ViewStyle = {
-  paddingHorizontal: 14,
-  paddingVertical: 8,
-  borderRadius: 12,
-  marginRight: 10
-};
+    input: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: colors.text
+    } as TextStyle,
 
-const catBtnActive: ViewStyle = {
-  backgroundColor: '#00c056ff'
-};
+    textArea: {
+      height: 80,
+      textAlignVertical: 'top'
+    } as TextStyle,
 
-const catBtnInactive: ViewStyle = {
-  backgroundColor: '#e5e7eb'
-};
+    nutriText: {
+      color: colors.primary,
+      fontSize: 16,
+      marginTop: 4
+    } as TextStyle,
 
-const catTextActive: TextStyle = {
-  color: 'white',
-  fontWeight: '600'
-};
+    catRow: {
+      flexDirection: 'row',
+      marginBottom: 12
+    } as ViewStyle,
 
-const catTextInactive: TextStyle = {
-  color: '#374151',
-  fontWeight: '600'
-};
+    catBtn: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 12,
+      marginRight: 10
+    } as ViewStyle,
 
-const dishItem: ViewStyle = {
-  padding: 12,
-  borderRadius: 10,
-  marginBottom: 8
-};
+    catBtnActive: {
+      backgroundColor: colors.primary
+    } as ViewStyle,
 
-const dishItemActive: ViewStyle = {
-  backgroundColor: '#d1fae5'
-};
+    catBtnInactive: {
+      backgroundColor: colors.input
+    } as ViewStyle,
 
-const dishItemInactive: ViewStyle = {
-  backgroundColor: '#f3f4f6'
-};
+    catTextActive: {
+      color: 'white',
+      fontWeight: '600'
+    } as TextStyle,
 
-const dishText: TextStyle = {
-  fontWeight: '600',
-  color: '#111827'
-};
+    catTextInactive: {
+      color: colors.text,
+      fontWeight: '600'
+    } as TextStyle,
 
-const duplicateBtn: ViewStyle = {
-  backgroundColor: '#3b82f6',
-  paddingVertical: 12,
-  borderRadius: 12,
-  flexDirection: 'row',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginTop: 26
-};
+    dishItem: {
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 8
+    } as ViewStyle,
 
-const duplicateBtnText: TextStyle = {
-  color: 'white',
-  fontWeight: '600',
-  marginLeft: 8
-};
+    dishItemActive: {
+      backgroundColor: colors.input
+    } as ViewStyle,
 
-const deleteBtn: ViewStyle = {
-  backgroundColor: '#ef4444',
-  paddingVertical: 12,
-  borderRadius: 12,
-  flexDirection: 'row',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginTop: 12
-};
+    dishItemInactive: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border
+    } as ViewStyle,
 
-const deleteBtnText: TextStyle = {
-  color: 'white',
-  fontWeight: '600',
-  marginLeft: 8
-};
+    dishText: {
+      fontWeight: '600',
+      color: colors.text
+    } as TextStyle,
+
+    duplicateBtn: {
+      backgroundColor: '#3b82f6',
+      paddingVertical: 12,
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 26
+    } as ViewStyle,
+
+    duplicateBtnText: {
+      color: 'white',
+      fontWeight: '600',
+      marginLeft: 8
+    } as TextStyle,
+
+    deleteBtn: {
+      backgroundColor: '#ef4444',
+      paddingVertical: 12,
+      borderRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 12
+    } as ViewStyle,
+
+    deleteBtnText: {
+      color: 'white',
+      fontWeight: '600',
+      marginLeft: 8
+    } as TextStyle
+  };
+}
