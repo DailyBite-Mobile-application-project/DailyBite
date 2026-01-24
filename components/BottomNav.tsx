@@ -1,5 +1,5 @@
 // BottomNav.tsx
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Home, Book, Calendar, User, Apple } from 'lucide-react-native';
 import { useApp } from './AppContext';
 import { useT } from './i18n';
@@ -24,14 +24,15 @@ export function BottomNav({ active }: { active: NavItem }) {
     <View
       style={{
         position: 'absolute',
-        bottom: 0,
+        bottom: Platform.OS === 'android' ? 8 : 0,
         left: 0,
         right: 0,
         backgroundColor: colors.card,
         borderTopWidth: 1,
         borderColor: colors.border,
         paddingHorizontal: 18,
-        paddingVertical: 10
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'android' ? 16 : 10
       }}
     >
       <View

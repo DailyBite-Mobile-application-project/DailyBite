@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Modal,
-  TextInput,
   Alert,
   type ViewStyle
 } from 'react-native';
@@ -17,6 +16,7 @@ import {
   Trash2
 } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
+import * as Calendar from 'expo-calendar';
 import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
 import { useT } from './i18n';
@@ -26,7 +26,7 @@ import { syncMealsToSystemCalendar } from './calendarSync';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export function ScheduleScreen() {
-  const { navigate, scheduledMeals, setScheduledMeals, dishes, theme } = useApp();
+  const { navigate, scheduledMeals, setScheduledMeals, dishes, dietPlans, theme } = useApp();
   const t = useT();
   const colors = useTheme();
 
@@ -34,10 +34,30 @@ export function ScheduleScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState<string>('');
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [calendarChoices, setCalendarChoices] = useState<Calendar.Calendar[]>([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
+  const [selectedCalendarLabel, setSelectedCalendarLabel] = useState('');
+  const [googleEvents, setGoogleEvents] = useState<Calendar.Event[]>([]);
+  const [googleEventsByDate, setGoogleEventsByDate] = useState<Record<string, Calendar.Event[]>>({});
+  const [googleEventsLoading, setGoogleEventsLoading] = useState(false);
+  const [calendarPickerMode, setCalendarPickerMode] = useState<'sync' | 'view'>('sync');
+  const [editingTarget, setEditingTarget] = useState<{
+    kind: 'meal' | 'google';
+    id: string;
+    dateStr: string;
+    durationMinutes: number;
+  } | null>(null);
+  const isMountedRef = useRef(true);
+  const requestSeqRef = useRef(0);
 
+  const [addMode, setAddMode] = useState<'dish' | 'plan'>('dish');
   const [newDishId, setNewDishId] = useState<string | null>(null);
+  const [newPlanId, setNewPlanId] = useState<string | null>(null);
   const [newMealType, setNewMealType] = useState<MealType | ''>('');
-  const [newTime, setNewTime] = useState('');
+  const [newTime, setNewTime] = useState<string>('');
 
   const daysInMonth = new Date(
     currentDate.getFullYear(),
@@ -95,21 +115,178 @@ export function ScheduleScreen() {
   const today = new Date().toISOString().split('T')[0];
 
   const addMeal = () => {
-    if (!selectedDate || !newDishId || !newMealType || !newTime) return;
+    if (!selectedDate || !newMealType || !newTime) {
+      Alert.alert(t('schedule.alert.missingFields.title'), t('schedule.alert.missingFields.msg'));
+      return;
+    }
 
-    const newMeal = {
-      id: Date.now().toString(),
-      date: selectedDate,
-      time: newTime,
-      dishId: newDishId,
-      type: newMealType as MealType
-    };
+    if (addMode === 'dish') {
+      if (!newDishId) {
+        Alert.alert(t('schedule.alert.missingFields.title'), t('schedule.alert.missingDish.msg'));
+        return;
+      }
 
-    setScheduledMeals([...scheduledMeals, newMeal]);
+      const newMeal = {
+        id: Date.now().toString(),
+        date: selectedDate,
+        time: newTime,
+        dishId: newDishId,
+        type: newMealType as MealType
+      };
+
+      setScheduledMeals([...scheduledMeals, newMeal]);
+      setShowAddMeal(false);
+      setNewDishId(null);
+      setNewPlanId(null);
+      setNewMealType('');
+      setNewTime('');
+      setAddMode('dish');
+      return;
+    }
+
+    if (!newPlanId) {
+      Alert.alert(t('schedule.alert.missingFields.title'), t('schedule.alert.missingPlan.msg'));
+      return;
+    }
+
+    const plan = dietPlans.find(p => p.id === newPlanId);
+    if (!plan || plan.dishIds.length === 0) {
+      Alert.alert(t('schedule.alert.emptyPlan.title'), t('schedule.alert.emptyPlan.msg'));
+      return;
+    }
+
+    const days = Number(plan.duration.replace(/\D/g, '')) || 0;
+    if (days <= 0) {
+      Alert.alert(t('schedule.alert.invalidDuration.title'), t('schedule.alert.invalidDuration.msg'));
+      return;
+    }
+
+    const base = new Date(`${selectedDate}T00:00:00`);
+    if (Number.isNaN(base.getTime())) {
+      Alert.alert(t('schedule.alert.invalidDate.title'), t('schedule.alert.invalidDate.msg'));
+      return;
+    }
+
+    const newMeals = [];
+    for (let dayOffset = 0; dayOffset < days; dayOffset += 1) {
+      const date = new Date(base);
+      date.setDate(base.getDate() + dayOffset);
+      const dateStr = date.toISOString().split('T')[0];
+
+      for (const dishId of plan.dishIds) {
+        newMeals.push({
+          id: `${Date.now()}-${dayOffset}-${dishId}`,
+          date: dateStr,
+          time: newTime,
+          dishId,
+          type: newMealType as MealType
+        });
+      }
+    }
+
+    setScheduledMeals([...scheduledMeals, ...newMeals]);
     setShowAddMeal(false);
     setNewDishId(null);
+    setNewPlanId(null);
     setNewMealType('');
     setNewTime('');
+    setAddMode('dish');
+  };
+
+  const startEditMealTime = (mealId: string, time: string) => {
+    setEditingTarget({
+      kind: 'meal',
+      id: mealId,
+      dateStr: selectedDate ?? '',
+      durationMinutes: 30
+    });
+    setEditingTime(time);
+  };
+
+  const startEditGoogleEventTime = (event: Calendar.Event) => {
+    const startValue = event.startDate as any;
+    const endValue = event.endDate as any;
+    const start = startValue ? new Date(startValue) : null;
+    const end = endValue ? new Date(endValue) : null;
+    if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+
+    const h = String(start.getHours()).padStart(2, '0');
+    const m = String(start.getMinutes()).padStart(2, '0');
+    const dateStr = start.toISOString().split('T')[0];
+    const durationMinutes = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000));
+
+    setEditingTarget({
+      kind: 'google',
+      id: event.id,
+      dateStr,
+      durationMinutes
+    });
+    setEditingTime(`${h}:${m}`);
+  };
+
+  const saveEditMealTime = async () => {
+    if (!editingTarget || !editingTime) {
+      Alert.alert(t('schedule.alert.missingFields.title'), t('schedule.alert.missingFields.msg'));
+      return;
+    }
+
+    if (editingTarget.kind === 'meal') {
+      setScheduledMeals(
+        scheduledMeals.map(meal =>
+          meal.id === editingTarget.id ? { ...meal, time: editingTime } : meal
+        )
+      );
+      setEditingTarget(null);
+      setEditingTime('');
+      return;
+    }
+
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('schedule.alert.calendarPermission.title'), t('schedule.alert.calendarPermission.msg'));
+        return;
+      }
+
+      const start = new Date(`${editingTarget.dateStr}T${editingTime}:00`);
+      if (Number.isNaN(start.getTime())) {
+        Alert.alert(t('schedule.alert.invalidDate.title'), t('schedule.alert.invalidDate.msg'));
+        return;
+      }
+
+      const end = new Date(start.getTime() + editingTarget.durationMinutes * 60000);
+      await Calendar.updateEventAsync(editingTarget.id, {
+        startDate: start,
+        endDate: end
+      });
+    } finally {
+      setEditingTarget(null);
+      setEditingTime('');
+      if (selectedDate) {
+        await loadGoogleEvents(selectedDate);
+      }
+      await loadGoogleEventsForMonth(currentDate);
+    }
+  };
+
+  const deleteGoogleEvent = async (eventId: string) => {
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('schedule.alert.calendarPermission.title'), t('schedule.alert.calendarPermission.msg'));
+        return;
+      }
+
+      await Calendar.deleteEventAsync(eventId);
+      if (selectedDate) {
+        await loadGoogleEvents(selectedDate);
+      }
+      await loadGoogleEventsForMonth(currentDate);
+    } catch {
+      Alert.alert(t('schedule.alert.calendarDelete.title'), t('schedule.alert.calendarDelete.msg'));
+    }
   };
 
   const handleSyncToCalendar = async () => {
@@ -117,24 +294,159 @@ export function ScheduleScreen() {
 
     setSyncLoading(true);
     try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('schedule.alert.calendarPermission.title'), t('schedule.alert.calendarPermission.msg'));
+        return;
+      }
+
+      if (!selectedCalendarId) {
+        await openGoogleCalendarPicker('sync');
+        return;
+      }
+
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+
       const res = await syncMealsToSystemCalendar(scheduledMeals as any, dishes as any, {
         durationMinutes: 30,
-        clearExistingInRange: true,
-        titlePrefix: '🍽'
+        clearExistingInRange: false,
+        titlePrefix: '🍽',
+        rangeStart: monthStart,
+        rangeEnd: monthEnd,
+        calendarIdOverride: selectedCalendarId
       });
 
-      Alert.alert(
-        'OK',
-        `Zsynchronizowano z kalendarzem.\nDodano: ${res.created}\nUsunięto stare: ${res.removed}`
-      );
-    } catch (e: any) {
-      const msg =
-        e?.message === 'CALENDAR_PERMISSION_DENIED'
-          ? 'Brak dostępu do kalendarza (odmówione uprawnienia).'
-          : 'Nie udało się zsynchronizować z kalendarzem.';
-      Alert.alert('Błąd', msg);
+      Alert.alert(t('schedule.sync.okTitle'), t('schedule.sync.okMsg'));
+    } catch {
+      Alert.alert(t('schedule.sync.errorTitle'), t('schedule.sync.errorMsg'));
     } finally {
       setSyncLoading(false);
+    }
+  };
+
+  const formatCalendarLabel = (cal: Calendar.Calendar) =>
+    `${cal.title} (${cal.ownerAccount || cal.source?.name || 'Google'})`;
+
+  const openGoogleCalendarPicker = async (mode: 'sync' | 'view') => {
+    setCalendarPickerMode(mode);
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('schedule.alert.calendarPermission.title'), t('schedule.alert.calendarPermission.msg'));
+        return;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const googleCalendars = calendars.filter(c => {
+        const src = (c.source?.name || '').toLowerCase();
+        const owner = (c.ownerAccount || '').toLowerCase();
+        return src.includes('google') || owner.includes('gmail.com') || owner.includes('googlemail.com');
+      });
+
+      if (googleCalendars.length === 0) {
+        Alert.alert(t('schedule.alert.noGoogleCalendar.title'), t('schedule.alert.noGoogleCalendar.msg'));
+        return;
+      }
+
+      const initial = selectedCalendarId ?? googleCalendars[0].id;
+      const initialCal = googleCalendars.find(c => c.id === initial) ?? googleCalendars[0];
+
+      if (!isMountedRef.current) return;
+
+      setCalendarChoices(googleCalendars);
+      setSelectedCalendarId(initialCal.id);
+      setSelectedCalendarLabel(formatCalendarLabel(initialCal));
+      setShowCalendarPicker(true);
+    } catch {
+      Alert.alert(t('schedule.sync.errorTitle'), t('schedule.sync.errorMsg'));
+    }
+  };
+
+  const confirmCalendarSelection = async () => {
+    setShowCalendarPicker(false);
+    if (!selectedCalendarId) return;
+    if (calendarPickerMode === 'sync') {
+      await handleSyncToCalendar();
+    } else if (selectedDate) {
+      await loadGoogleEvents(selectedDate);
+    }
+  };
+
+  const loadGoogleEvents = async (dateStr: string) => {
+    if (!selectedCalendarId) return;
+    const requestId = requestSeqRef.current + 1;
+    requestSeqRef.current = requestId;
+    if (isMountedRef.current) setGoogleEventsLoading(true);
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        if (isMountedRef.current && requestSeqRef.current === requestId) {
+          setGoogleEvents([]);
+        }
+        return;
+      }
+
+      const start = new Date(`${dateStr}T00:00:00`);
+      const end = new Date(`${dateStr}T23:59:59`);
+      const events = await Calendar.getEventsAsync([selectedCalendarId], start, end);
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEvents(events);
+      }
+    } catch {
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEvents([]);
+      }
+    } finally {
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEventsLoading(false);
+      }
+    }
+  };
+
+  const loadGoogleEventsForMonth = async (date: Date) => {
+    if (!selectedCalendarId) {
+      if (isMountedRef.current) setGoogleEventsByDate({});
+      return;
+    }
+
+    const requestId = requestSeqRef.current + 1;
+    requestSeqRef.current = requestId;
+    if (isMountedRef.current) setGoogleEventsLoading(true);
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        if (isMountedRef.current && requestSeqRef.current === requestId) {
+          setGoogleEventsByDate({});
+        }
+        return;
+      }
+
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      const events = await Calendar.getEventsAsync([selectedCalendarId], start, end);
+
+      const byDate: Record<string, Calendar.Event[]> = {};
+      for (const ev of events) {
+        const startValue = ev.startDate as any;
+        const startDate = startValue ? new Date(startValue) : null;
+        if (!startDate || Number.isNaN(startDate.getTime())) continue;
+        const key = startDate.toISOString().split('T')[0];
+        if (!byDate[key]) byDate[key] = [];
+        byDate[key].push(ev);
+      }
+
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEventsByDate(byDate);
+      }
+    } catch {
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEventsByDate({});
+      }
+    } finally {
+      if (isMountedRef.current && requestSeqRef.current === requestId) {
+        setGoogleEventsLoading(false);
+      }
     }
   };
 
@@ -151,6 +463,108 @@ export function ScheduleScreen() {
 
   // ZAMIENNIK colors.overlay (u Ciebie tego nie ma w theme)
   const modalOverlayBg = theme === 'dark' ? 'rgba(0,0,0,0.60)' : 'rgba(0,0,0,0.35)';
+
+  const timeOptions = useMemo(() => {
+    const times: string[] = [];
+    for (let h = 0; h < 24; h += 1) {
+      for (let m = 0; m < 60; m += 30) {
+        const hh = String(h).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        times.push(`${hh}:${mm}`);
+      }
+    }
+    return times;
+  }, []);
+
+  const formatTime = (dt: Date | null) => {
+    if (!dt || Number.isNaN(dt.getTime())) return '--:--';
+    const h = String(dt.getHours()).padStart(2, '0');
+    const m = String(dt.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  const parseMealIdFromNotes = (notes?: string | null) => {
+    if (!notes) return null;
+    const match = notes.match(/MealId:\s*([^\s]+)/);
+    return match ? match[1] : null;
+  };
+
+  const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+    return h * 60 + m;
+  };
+
+  const combinedItems = useMemo(() => {
+    if (!selectedDate) return [];
+
+    const appMeals = mealsForDate(selectedDate).map(meal => {
+      const dish = dishes.find(d => d.id === meal.dishId);
+      return {
+        kind: 'app' as const,
+        id: meal.id,
+        timeKey: timeToMinutes(meal.time),
+        title: dish?.name ?? t('main.unknownDish'),
+        subtitle: `${meal.time} • ${t(`meal.${meal.type}`)}`,
+        meal
+      };
+    });
+
+    const appMealIds = new Set(appMeals.map(m => m.id));
+    const googleItems = googleEvents
+      .map(ev => {
+        const startValue = ev.startDate as any;
+        const endValue = ev.endDate as any;
+        const start = startValue ? new Date(startValue) : null;
+        const end = endValue ? new Date(endValue) : null;
+        if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          return null;
+        }
+
+        const linkedMealId = parseMealIdFromNotes(ev.notes);
+        if (linkedMealId && appMealIds.has(linkedMealId)) {
+          return null;
+        }
+
+        const title = ev.title || t('schedule.googleCalendar.untitled');
+        return {
+          kind: 'google' as const,
+          id: ev.id,
+          timeKey: start.getHours() * 60 + start.getMinutes(),
+          title,
+          subtitle: `${formatTime(start)} - ${formatTime(end)} • ${t('schedule.googleCalendar.label')}`,
+          event: ev
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item);
+
+    return [...appMeals, ...googleItems].sort((a, b) => a.timeKey - b.timeKey);
+  }, [selectedDate, scheduledMeals, googleEvents, dishes, t]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      setShowCalendarPicker(false);
+      setCalendarChoices([]);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDate || !selectedCalendarId) {
+      setGoogleEvents([]);
+      return;
+    }
+    void loadGoogleEvents(selectedDate);
+  }, [selectedDate, selectedCalendarId]);
+
+  useEffect(() => {
+    if (!selectedCalendarId) {
+      setGoogleEventsByDate({});
+      return;
+    }
+    void loadGoogleEventsForMonth(currentDate);
+  }, [selectedCalendarId, currentDate]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
@@ -239,6 +653,17 @@ export function ScheduleScreen() {
           </Text>
         </TouchableOpacity>
 
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={{ color: colors.subtext }}>
+            {t('schedule.googleCalendar.label')}: {selectedCalendarLabel || t('schedule.googleCalendar.none')}
+          </Text>
+          <TouchableOpacity onPress={() => openGoogleCalendarPicker('view')}>
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+              {selectedCalendarId ? t('schedule.googleCalendar.change') : t('schedule.googleCalendar.select')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* DAYS OF WEEK */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           {weekDays.map((d,i) => (
@@ -262,6 +687,7 @@ export function ScheduleScreen() {
             const dateStr = formatDate(day);
 
             const hasMeals = mealsForDate(dateStr).length > 0;
+            const hasGoogle = (googleEventsByDate[dateStr]?.length ?? 0) > 0;
             const isToday = dateStr === today;
             const isSelected = selectedDate === dateStr;
 
@@ -298,7 +724,7 @@ export function ScheduleScreen() {
                   <Text style={{ color: textColor }}>{day}</Text>
                 </View>
 
-                {hasMeals && (
+                {(hasMeals || hasGoogle) && (
                   <View
                     style={{
                       width: 6,
@@ -347,53 +773,63 @@ export function ScheduleScreen() {
             </TouchableOpacity>
           </View>
 
-          {mealsForDate(selectedDate).map(meal => {
-            const dish = dishes.find(d => d.id === meal.dishId);
+          {combinedItems.map(item => (
+            <View
+              key={`${item.kind}-${item.id}`}
+              style={{
+                backgroundColor: colors.card,
+                padding: 16,
+                borderRadius: 16,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOpacity: theme === 'dark' ? 0 : 0.08,
+                shadowRadius: 6,
+                borderWidth: theme === 'dark' ? 1 : 0,
+                borderColor: theme === 'dark' ? colors.border : 'transparent'
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                  {item.title}
+                </Text>
+                {item.kind === 'app' ? (
+                  <TouchableOpacity onPress={() => startEditMealTime(item.meal.id, item.meal.time)}>
+                    <Text style={{ color: colors.subtext }}>
+                      {item.subtitle} • {t('schedule.editTime')}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => startEditGoogleEventTime(item.event)}>
+                    <Text style={{ color: colors.subtext }}>
+                      {item.subtitle} • {t('schedule.editTime')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            return (
-              <View
-                key={meal.id}
+              <TouchableOpacity
+                onPress={() =>
+                  item.kind === 'app'
+                    ? setScheduledMeals(scheduledMeals.filter(m => m.id !== item.id))
+                    : deleteGoogleEvent(item.id)
+                }
                 style={{
-                  backgroundColor: colors.card,
-                  padding: 16,
-                  borderRadius: 16,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
+                  width: 36,
+                  height: 36,
+                  backgroundColor: colors.dangerSoft,
+                  borderRadius: 10,
                   alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOpacity: theme === 'dark' ? 0 : 0.08,
-                  shadowRadius: 6,
-                  borderWidth: theme === 'dark' ? 1 : 0,
-                  borderColor: theme === 'dark' ? colors.border : 'transparent'
+                  justifyContent: 'center'
                 }}
               >
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
-                    {dish?.name ?? t('main.unknownDish')}
-                  </Text>
-                  <Text style={{ color: colors.subtext }}>
-                    {meal.time} • {t(`meal.${meal.type}`)}
-                  </Text>
-                </View>
+                <Trash2 size={16} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          ))}
 
-                <TouchableOpacity
-                  onPress={() => setScheduledMeals(scheduledMeals.filter(m => m.id !== meal.id))}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    backgroundColor: colors.dangerSoft,
-                    borderRadius: 10,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Trash2 size={16} color={colors.danger} />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-
-          {mealsForDate(selectedDate).length === 0 && (
+          {combinedItems.length === 0 && (
             <Text style={{ textAlign: 'center', color: colors.subtext, paddingVertical: 20 }}>
               {t('schedule.noMealsThisDay')}
             </Text>
@@ -424,23 +860,79 @@ export function ScheduleScreen() {
               {t('schedule.addMealTitle')}
             </Text>
 
-            <Text style={{ marginBottom: 6, color: colors.text }}>{t('schedule.dishLabel')}</Text>
-            <View
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: 12,
-                overflow: 'hidden',
-                backgroundColor: colors.input
-              }}
-            >
-              <Picker selectedValue={newDishId} onValueChange={(v) => setNewDishId(v)}>
-                <Picker.Item label={t('schedule.selectDish')} value={null} />
-                {dishes.map(d => (
-                  <Picker.Item key={d.id} label={d.name} value={d.id} />
-                ))}
-              </Picker>
+            <Text style={{ marginBottom: 6, color: colors.text }}>{t('schedule.addModeLabel')}</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={() => setAddMode('dish')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: addMode === 'dish' ? colors.primary : colors.input,
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: addMode === 'dish' ? colors.primaryText : colors.text }}>
+                  {t('schedule.addModeDish')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setAddMode('plan')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: addMode === 'plan' ? colors.primary : colors.input,
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: addMode === 'plan' ? colors.primaryText : colors.text }}>
+                  {t('schedule.addModePlan')}
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {addMode === 'dish' ? (
+              <>
+                <Text style={{ marginBottom: 6, color: colors.text }}>{t('schedule.dishLabel')}</Text>
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    backgroundColor: colors.input
+                  }}
+                >
+                  <Picker selectedValue={newDishId} onValueChange={(v) => setNewDishId(v)}>
+                    <Picker.Item label={t('schedule.selectDish')} value={null} />
+                    {dishes.map(d => (
+                      <Picker.Item key={d.id} label={d.name} value={d.id} />
+                    ))}
+                  </Picker>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={{ marginBottom: 6, color: colors.text }}>{t('schedule.planLabel')}</Text>
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    backgroundColor: colors.input
+                  }}
+                >
+                  <Picker selectedValue={newPlanId} onValueChange={(v) => setNewPlanId(v)}>
+                    <Picker.Item label={t('schedule.selectPlan')} value={null} />
+                    {dietPlans.map(plan => (
+                      <Picker.Item key={plan.id} label={plan.name} value={plan.id} />
+                    ))}
+                  </Picker>
+                </View>
+              </>
+            )}
 
             <Text style={{ marginBottom: 6, marginTop: 12, color: colors.text }}>
               {t('schedule.mealTypeLabel')}
@@ -466,20 +958,22 @@ export function ScheduleScreen() {
             <Text style={{ marginBottom: 6, marginTop: 12, color: colors.text }}>
               {t('schedule.timeLabel')}
             </Text>
-            <TextInput
-              placeholder={t('schedule.timePlaceholder')}
-              placeholderTextColor={colors.muted}
-              value={newTime}
-              onChangeText={setNewTime}
+            <View
               style={{
-                backgroundColor: colors.input,
-                color: colors.text,
                 borderWidth: 1,
                 borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: colors.input
               }}
-            />
+            >
+              <Picker selectedValue={newTime} onValueChange={(v) => setNewTime(v)}>
+                <Picker.Item label={t('schedule.selectTime')} value="" />
+                {timeOptions.map(time => (
+                  <Picker.Item key={time} label={time} value={time} />
+                ))}
+              </Picker>
+            </View>
 
             <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
               <TouchableOpacity
@@ -500,6 +994,189 @@ export function ScheduleScreen() {
 
               <TouchableOpacity
                 onPress={() => setShowAddMeal(false)}
+                style={{
+                  backgroundColor: colors.soft,
+                  padding: 12,
+                  borderRadius: 12,
+                  flex: 1,
+                  alignItems: 'center',
+                  marginLeft: 8,
+                  borderWidth: theme === 'dark' ? 1 : 0,
+                  borderColor: theme === 'dark' ? colors.border : 'transparent'
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* EDIT TIME */}
+      <Modal visible={!!editingTarget} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: modalOverlayBg,
+            justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 14, color: colors.text }}>
+              {t('schedule.editTimeTitle')}
+            </Text>
+
+            <Text style={{ marginBottom: 6, color: colors.text }}>
+              {t('schedule.timeLabel')}
+            </Text>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                overflow: 'hidden',
+                backgroundColor: colors.input
+              }}
+            >
+              <Picker selectedValue={editingTime} onValueChange={(v) => setEditingTime(v)}>
+                <Picker.Item label={t('schedule.selectTime')} value="" />
+                {timeOptions.map(time => (
+                  <Picker.Item key={time} label={time} value={time} />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                onPress={saveEditMealTime}
+                style={{
+                  backgroundColor: colors.primary,
+                  padding: 12,
+                  borderRadius: 12,
+                  flex: 1,
+                  alignItems: 'center',
+                  marginRight: 8
+                }}
+              >
+                <Text style={{ color: colors.primaryText, fontWeight: '600' }}>
+                  {t('common.save')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingTarget(null);
+                  setEditingTime('');
+                }}
+                style={{
+                  backgroundColor: colors.soft,
+                  padding: 12,
+                  borderRadius: 12,
+                  flex: 1,
+                  alignItems: 'center',
+                  marginLeft: 8,
+                  borderWidth: theme === 'dark' ? 1 : 0,
+                  borderColor: theme === 'dark' ? colors.border : 'transparent'
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600' }}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CALENDAR PICKER */}
+      <Modal visible={showCalendarPicker} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: modalOverlayBg,
+            justifyContent: 'center',
+            padding: 20
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: theme === 'dark' ? 1 : 0,
+              borderColor: theme === 'dark' ? colors.border : 'transparent'
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 14, color: colors.text }}>
+              {t('schedule.calendarPicker.title')}
+            </Text>
+
+            <Text style={{ marginBottom: 6, color: colors.text }}>
+              {t('schedule.calendarPicker.label')}
+            </Text>
+            {calendarChoices.length === 0 ? (
+              <Text style={{ color: colors.subtext }}>
+                {t('schedule.alert.noGoogleCalendar.msg')}
+              </Text>
+            ) : (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  backgroundColor: colors.input
+                }}
+              >
+                <Picker
+                  selectedValue={selectedCalendarId}
+                  onValueChange={(v) => {
+                    setSelectedCalendarId(v);
+                    const found = calendarChoices.find(c => c.id === v);
+                    setSelectedCalendarLabel(found ? formatCalendarLabel(found) : '');
+                  }}
+                >
+                  {calendarChoices.map(cal => (
+                    <Picker.Item
+                      key={cal.id}
+                      label={`${cal.title} (${cal.ownerAccount || cal.source?.name || 'Google'})`}
+                      value={cal.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                onPress={confirmCalendarSelection}
+                style={{
+                  backgroundColor: colors.primary,
+                  padding: 12,
+                  borderRadius: 12,
+                  flex: 1,
+                  alignItems: 'center',
+                  marginRight: 8
+                }}
+              >
+                <Text style={{ color: colors.primaryText, fontWeight: '600' }}>
+                  {t('common.save')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowCalendarPicker(false)}
                 style={{
                   backgroundColor: colors.soft,
                   padding: 12,

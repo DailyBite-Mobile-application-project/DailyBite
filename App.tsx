@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, StatusBar, Platform } from 'react-native';
 import { LoginScreen } from './components/LoginScreen';
 import { MainScreen } from './components/MainScreen';
 import { DietPlansScreen } from './components/DietPlansScreen';
@@ -23,13 +23,18 @@ export type Screen =
 
 function AppContent() {
   const { currentScreen, user, selectedDietId } = useApp();
+  const topInset = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <View style={{ flex: 1, paddingTop: topInset }}>
+        <LoginScreen />
+      </View>
+    );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f0fdfa' }}>
+    <View style={{ flex: 1, backgroundColor: '#f0fdfa', paddingTop: topInset }}>
       {currentScreen === 'main' && <MainScreen />}
       {currentScreen === 'diet-plans' && <DietPlansScreen />}
       {currentScreen === 'diet-plan-editor' && <DietPlanEditorScreen />}

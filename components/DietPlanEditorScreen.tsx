@@ -123,7 +123,7 @@ export function DietPlanEditorScreen() {
     }
 
     const daysNumber = Number(durationDays);
-    if (isNaN(daysNumber) || daysNumber < 1) {
+    if (isNaN(daysNumber) || daysNumber < 1 || daysNumber > 14) {
       Alert.alert(
         t('planEditor.alert.invalidDuration.title'),
         t('planEditor.alert.invalidDuration.msg')

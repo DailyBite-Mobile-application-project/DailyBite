@@ -5,11 +5,9 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  Image
+  Alert
 } from 'react-native';
-import { ArrowLeft, Plus, Trash2, Save, Camera } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useApp } from './AppContext';
 import { useT } from './i18n';
@@ -28,7 +26,6 @@ export function DishEditorScreen() {
   const [ingredients, setIngredients] = useState<{ productId: string; amount: number }[]>(
     existingDish?.products ?? []
   );
-  const [imageUri, setImageUri] = useState<string | null>(existingDish?.image ?? null);
 
   const nutrition = useMemo(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
@@ -51,30 +48,6 @@ export function DishEditorScreen() {
       fats: Math.round(fats)
     };
   }, [ingredients, products]);
-
-  const pickImageFromCamera = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t('dishEditor.alert.permission.title'), t('dishEditor.alert.permission.msg'));
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8
-    });
-
-    if (!result.canceled) setImageUri(result.assets[0].uri);
-  };
-
-  const pickImageFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      quality: 0.8
-    });
-
-    if (!result.canceled) setImageUri(result.assets[0].uri);
-  };
 
   const addIngredient = () => {
     if (products.length === 0) return;
@@ -99,13 +72,37 @@ export function DishEditorScreen() {
       return;
     }
 
+    if (!Number.isFinite(prepTime) || prepTime <= 0) {
+      Alert.alert(
+        t('dishEditor.alert.missingName.title'),
+        t('dishEditor.alert.missingName.msg')
+      );
+      return;
+    }
+
+    if (ingredients.length === 0) {
+      Alert.alert(
+        t('dishEditor.alert.missingName.title'),
+        t('dishEditor.alert.missingName.msg')
+      );
+      return;
+    }
+
+    if (!instructions.trim()) {
+      Alert.alert(
+        t('dishEditor.alert.missingName.title'),
+        t('dishEditor.alert.missingName.msg')
+      );
+      return;
+    }
+
     const newDish = {
       id: existingDish?.id ?? Date.now().toString(),
       name: dishName.trim(),
       products: ingredients,
       instructions,
       prepTime,
-      image: imageUri ?? null
+      image: existingDish?.image ?? null
     };
 
     if (existingDish) {
@@ -115,18 +112,6 @@ export function DishEditorScreen() {
     }
 
     navigate('main');
-  };
-
-  const openImageSourceDialog = () => {
-    Alert.alert(
-      t('dishEditor.imageSource.title'),
-      t('dishEditor.imageSource.msg'),
-      [
-        { text: t('dishEditor.imageSource.camera'), onPress: pickImageFromCamera },
-        { text: t('dishEditor.imageSource.gallery'), onPress: pickImageFromGallery },
-        { text: t('common.cancel'), style: 'cancel' }
-      ]
-    );
   };
 
   const inputStyle = {
@@ -192,44 +177,6 @@ export function DishEditorScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-        {/* IMAGE */}
-        <Section
-          title={t('dishEditor.section.image')}
-          colors={colors}
-          rightButtonLabel={undefined}
-          rightButtonAction={undefined}
-        >
-          <TouchableOpacity
-            onPress={openImageSourceDialog}
-            style={{
-              backgroundColor: colors.input,
-              padding: 14,
-              borderRadius: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 12
-            }}
-          >
-            <Camera size={20} color={colors.primary} />
-            <Text style={{ marginLeft: 8, color: colors.primary, fontWeight: '600' }}>
-              {imageUri ? t('dishEditor.changeImage') : t('dishEditor.addImage')}
-            </Text>
-          </TouchableOpacity>
-
-          {imageUri && (
-            <Image
-              source={{ uri: imageUri }}
-              style={{
-                width: '100%',
-                height: 200,
-                borderRadius: 14,
-                marginBottom: 12
-              }}
-            />
-          )}
-        </Section>
-
         {/* BASIC */}
         <Section title={t('dishEditor.section.basic')} colors={colors}>
           <Text style={{ color: colors.muted, marginBottom: 6 }}>{t('dishEditor.nameLabel')}</Text>

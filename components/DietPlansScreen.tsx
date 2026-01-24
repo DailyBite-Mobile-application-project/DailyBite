@@ -165,7 +165,7 @@ export function DietPlansScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: 120,
+          paddingBottom: 170,
           paddingTop: 16,
           gap: 16
         }}

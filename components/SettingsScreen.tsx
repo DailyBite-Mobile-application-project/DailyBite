@@ -1,6 +1,6 @@
 // SettingsScreen.tsx
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import {
   ArrowLeft,
   User,
@@ -25,6 +25,14 @@ export function SettingsScreen() {
   const colors = useTheme();
 
   const brandHeaderBg = theme === 'dark' ? '#0b3d2a' : colors.primary;
+
+  const showWip = (label: string) => {
+    Alert.alert(
+      t('settings.wip.title'),
+      t('settings.wip.msg', { feature: label }),
+      [{ text: t('common.ok') }]
+    );
+  };
 
   // i18n: używamy kluczy, które masz w słowniku
   const settingsSections = [
@@ -196,6 +204,7 @@ export function SettingsScreen() {
                 {section.items.map((item, j) => (
                   <TouchableOpacity
                     key={j}
+                    onPress={() => showWip(item.label)}
                     style={{
                       flexDirection: 'row',
                       justifyContent: 'space-between',

@@ -1,5 +1,5 @@
 import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
-import { ArrowLeft, Clock, Flame, Check, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Clock, Flame, Calendar } from 'lucide-react-native';
 import { useApp } from './AppContext';
 import { useT } from './i18n';
 import { useTheme } from './theme';
@@ -7,7 +7,7 @@ import { useTheme } from './theme';
 type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
 export function DietDetailScreen({ dietId }: { dietId: string }) {
-  const { dietPlans, navigate } = useApp();
+  const { dietPlans, navigate, dishes, products } = useApp();
   const t = useT();
   const colors = useTheme();
 
@@ -34,19 +34,30 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
     );
   }
 
-  const benefits = [
-    t('dietDetail.benefit1'),
-    t('dietDetail.benefit2'),
-    t('dietDetail.benefit3'),
-    t('dietDetail.benefit4'),
-    t('dietDetail.benefit5')
-  ];
-
   const imageSource =
     plan.image ??
     'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
 
   const cat = (plan.category as DietCategory) ?? 'Balanced';
+  const planDishes = dishes.filter(dish => plan.dishIds.includes(dish.id));
+
+  const nutrition = planDishes.reduce(
+    (acc, dish) => {
+      dish.products.forEach(sp => {
+        const product = products.find(p => p.id === sp.productId);
+        if (!product) return;
+
+        const m = sp.amount / 100;
+        acc.calories += product.calories * m;
+        acc.protein += product.protein * m;
+        acc.carbs += product.carbs * m;
+        acc.fats += product.fats * m;
+      });
+
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0, fats: 0 }
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -118,7 +129,14 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
           {/* STATS */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
             <Stat icon={Clock} label={t('dietDetail.duration')} value={plan.duration} />
-            <Stat icon={Flame} label={t('dietDetail.calories')} value={`${plan.calories} ${t('common.kcal')}`} />
+            <Stat icon={Flame} label={t('dietDetail.calories')} value={`${Math.round(nutrition.calories)} ${t('common.kcal')}`} />
+          </View>
+
+          {/* MACROS */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Macro label={t('macro.protein')} value={`${Math.round(nutrition.protein)} g`} />
+            <Macro label={t('macro.carbs')} value={`${Math.round(nutrition.carbs)} g`} />
+            <Macro label={t('macro.fats')} value={`${Math.round(nutrition.fats)} g`} />
           </View>
 
           <TouchableOpacity
@@ -138,24 +156,47 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
           </TouchableOpacity>
         </View>
 
-        {/* BENEFITS */}
-        <Section title={t('dietDetail.keyBenefits')}>
-          {benefits.map((benefit, i) => (
-            <View key={i} style={{ flexDirection: 'row', marginBottom: 8 }}>
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  backgroundColor: colors.input,
-                  borderRadius: 11,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 8
-                }}
-              >
-                <Check size={14} color={colors.primary} />
-              </View>
-              <Text style={{ color: colors.muted }}>{benefit}</Text>
+        {/* DESCRIPTION */}
+        <Section title={t('planEditor.desc')}>
+          <Text style={{ color: colors.muted }}>{plan.description}</Text>
+        </Section>
+
+        {/* DISHES */}
+        <Section title={t('planEditor.assignDishes')}>
+          {planDishes.length === 0 && (
+            <Text style={{ color: colors.muted }}>{t('planEditor.alert.noDishes.msg')}</Text>
+          )}
+
+          {planDishes.map(dish => (
+            <View key={dish.id} style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 6 }}>
+                {dish.name}
+              </Text>
+
+              <Text style={{ color: colors.subtext, marginBottom: 8 }}>
+                {t('dishEditor.prepTimeLabel')}: {dish.prepTime} min
+              </Text>
+
+              <Text style={{ color: colors.text, fontWeight: '600', marginBottom: 6 }}>
+                {t('dishEditor.section.ingredients')}
+              </Text>
+              {dish.products.map((sp, idx) => {
+                const product = products.find(p => p.id === sp.productId);
+                const label = product ? product.name : t('main.unknownDish');
+
+                return (
+                  <Text key={`${dish.id}-ing-${idx}`} style={{ color: colors.muted }}>
+                    {label} - {sp.amount} g
+                  </Text>
+                );
+              })}
+
+              <Text style={{ color: colors.text, fontWeight: '600', marginTop: 10, marginBottom: 6 }}>
+                {t('dishEditor.section.instructions')}
+              </Text>
+              <Text style={{ color: colors.muted }}>
+                {dish.instructions || '-'}
+              </Text>
             </View>
           ))}
         </Section>
@@ -174,6 +215,17 @@ function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: s
         <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
         <Text style={{ color: colors.text, fontWeight: '600' }}>{value}</Text>
       </View>
+    </View>
+  );
+}
+
+function Macro({ label, value }: { label: string; value: string }) {
+  const colors = useTheme();
+
+  return (
+    <View style={{ alignItems: 'center', width: '33%' }}>
+      <Text style={{ color: colors.muted, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: colors.text, fontWeight: '600' }}>{value}</Text>
     </View>
   );
 }
