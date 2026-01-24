@@ -6,6 +6,7 @@ const pl: Dict = {
   // BottomNav
   'nav.home': 'Główna',
   'nav.plans': 'Plany',
+  'nav.products': 'Produkty',
   'nav.schedule': 'Harmonogram',
   'nav.profile': 'Profil',
 
@@ -104,6 +105,8 @@ const pl: Dict = {
 'schedule.sync.okMsg': 'Zsynchronizowano z kalendarzem.',
 'schedule.sync.errorTitle': 'Błąd',
 'schedule.sync.errorMsg': 'Nie udało się zsynchronizować.',
+'schedule.sync.button': 'Synchronizuj z kalendarzem',
+'schedule.sync.inProgress': 'Synchronizuję…',
 'schedule.alert.missingFields.title': 'Brak danych',
 'schedule.alert.missingFields.msg': 'Wybierz typ posiłku i godzinę.',
 'schedule.alert.missingDish.msg': 'Wybierz danie.',
@@ -177,6 +180,7 @@ const pl: Dict = {
 
 // Common
 'common.kcal': 'kcal',
+'common.days': 'dni',
 
 // Common 
 'common.save': 'Zapisz',
@@ -291,6 +295,7 @@ const en: Dict = {
   // BottomNav
   'nav.home': 'Home',
   'nav.plans': 'Plans',
+  'nav.products': 'Products',
   'nav.schedule': 'Schedule',
   'nav.profile': 'Profile',
 
@@ -389,6 +394,8 @@ const en: Dict = {
 'schedule.sync.okMsg': 'Synchronized with calendar.',
 'schedule.sync.errorTitle': 'Error',
 'schedule.sync.errorMsg': 'Could not synchronize.',
+'schedule.sync.button': 'Synchronize with calendar',
+'schedule.sync.inProgress': 'Synchronizing…',
 'schedule.alert.missingFields.title': 'Missing data',
 'schedule.alert.missingFields.msg': 'Select meal type and time.',
 'schedule.alert.missingDish.msg': 'Select a dish.',
@@ -461,6 +468,7 @@ const en: Dict = {
 
 // Common
 'common.kcal': 'kcal',
+'common.days': 'days',
 
 // Common (if missing)
 'common.save': 'Save',

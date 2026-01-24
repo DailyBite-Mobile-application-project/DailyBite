@@ -90,6 +90,9 @@ type AppContextType = {
 
   theme: ThemeMode;
   setTheme: (mode: ThemeMode) => void;
+
+  selectedCalendarId: string | null;
+  setSelectedCalendarId: (id: string | null) => void;
 };
 
 export const AppContextInternal = createContext<AppContextType | undefined>(undefined);
@@ -171,6 +174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('pl');
 
   const [theme, setTheme] = useState<ThemeMode>('light');
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
 
   const navigate = (screen: Screen) => {
     setCurrentScreen(screen);
@@ -232,7 +236,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         language,
         setLanguage,
         theme,
-        setTheme
+        setTheme,
+        selectedCalendarId,
+        setSelectedCalendarId
       }}
     >
       {children}

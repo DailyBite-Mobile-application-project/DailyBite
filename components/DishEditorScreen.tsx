@@ -5,7 +5,9 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -126,7 +128,11 @@ export function DishEditorScreen() {
   } as const;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
       {/* HEADER */}
       <View
         style={{
@@ -176,7 +182,7 @@ export function DishEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
         {/* BASIC */}
         <Section title={t('dishEditor.section.basic')} colors={colors}>
           <Text style={{ color: colors.muted, marginBottom: 6 }}>{t('dishEditor.nameLabel')}</Text>
@@ -307,7 +313,7 @@ export function DishEditorScreen() {
           </Text>
         </Section>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

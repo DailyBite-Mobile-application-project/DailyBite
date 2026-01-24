@@ -39,6 +39,7 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
     'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
 
   const cat = (plan.category as DietCategory) ?? 'Balanced';
+  const durationLabel = plan.duration.replace('common.days', t('common.days'));
   const planDishes = dishes.filter(dish => plan.dishIds.includes(dish.id));
 
   const nutrition = planDishes.reduce(
@@ -128,7 +129,7 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
 
           {/* STATS */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Stat icon={Clock} label={t('dietDetail.duration')} value={plan.duration} />
+            <Stat icon={Clock} label={t('dietDetail.duration')} value={durationLabel} />
             <Stat icon={Flame} label={t('dietDetail.calories')} value={`${Math.round(nutrition.calories)} ${t('common.kcal')}`} />
           </View>
 
@@ -140,6 +141,7 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
           </View>
 
           <TouchableOpacity
+            onPress={() => navigate('schedule')}
             style={{
               backgroundColor: colors.primary,
               paddingVertical: 14,

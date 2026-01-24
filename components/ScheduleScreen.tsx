@@ -26,7 +26,16 @@ import { syncMealsToSystemCalendar } from './calendarSync';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export function ScheduleScreen() {
-  const { navigate, scheduledMeals, setScheduledMeals, dishes, dietPlans, theme } = useApp();
+  const {
+    navigate,
+    scheduledMeals,
+    setScheduledMeals,
+    dishes,
+    dietPlans,
+    theme,
+    selectedCalendarId,
+    setSelectedCalendarId
+  } = useApp();
   const t = useT();
   const colors = useTheme();
 
@@ -38,7 +47,6 @@ export function ScheduleScreen() {
   const [editingTime, setEditingTime] = useState<string>('');
   const [showCalendarPicker, setShowCalendarPicker] = useState(false);
   const [calendarChoices, setCalendarChoices] = useState<Calendar.Calendar[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
   const [selectedCalendarLabel, setSelectedCalendarLabel] = useState('');
   const [googleEvents, setGoogleEvents] = useState<Calendar.Event[]>([]);
   const [googleEventsByDate, setGoogleEventsByDate] = useState<Record<string, Calendar.Event[]>>({});
@@ -49,6 +57,7 @@ export function ScheduleScreen() {
     id: string;
     dateStr: string;
     durationMinutes: number;
+    calendarId?: string;
   } | null>(null);
   const isMountedRef = useRef(true);
   const requestSeqRef = useRef(0);
@@ -221,7 +230,8 @@ export function ScheduleScreen() {
       kind: 'google',
       id: event.id,
       dateStr,
-      durationMinutes
+      durationMinutes,
+      calendarId: (event as any).calendarId
     });
     setEditingTime(`${h}:${m}`);
   };
@@ -250,6 +260,15 @@ export function ScheduleScreen() {
         return;
       }
 
+      if (editingTarget.calendarId) {
+        const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+        const cal = calendars.find(c => c.id === editingTarget.calendarId);
+        if (cal && !cal.allowsModifications) {
+          Alert.alert(t('schedule.alert.calendarDelete.title'), t('schedule.alert.calendarPermission.msg'));
+          return;
+        }
+      }
+
       const start = new Date(`${editingTarget.dateStr}T${editingTime}:00`);
       if (Number.isNaN(start.getTime())) {
         Alert.alert(t('schedule.alert.invalidDate.title'), t('schedule.alert.invalidDate.msg'));
@@ -257,10 +276,14 @@ export function ScheduleScreen() {
       }
 
       const end = new Date(start.getTime() + editingTarget.durationMinutes * 60000);
-      await Calendar.updateEventAsync(editingTarget.id, {
-        startDate: start,
-        endDate: end
-      });
+      try {
+        await Calendar.updateEventAsync(editingTarget.id, {
+          startDate: start,
+          endDate: end
+        });
+      } catch {
+        Alert.alert(t('schedule.alert.calendarDelete.title'), t('schedule.alert.calendarDelete.msg'));
+      }
     } finally {
       setEditingTarget(null);
       setEditingTime('');
@@ -325,8 +348,7 @@ export function ScheduleScreen() {
     }
   };
 
-  const formatCalendarLabel = (cal: Calendar.Calendar) =>
-    `${cal.title} (${cal.ownerAccount || cal.source?.name || 'Google'})`;
+  const formatCalendarLabel = (cal: Calendar.Calendar) => cal.title || 'Google';
 
   const openGoogleCalendarPicker = async (mode: 'sync' | 'view') => {
     setCalendarPickerMode(mode);
@@ -349,8 +371,8 @@ export function ScheduleScreen() {
         return;
       }
 
-      const initial = selectedCalendarId ?? googleCalendars[0].id;
-      const initialCal = googleCalendars.find(c => c.id === initial) ?? googleCalendars[0];
+    const initial = selectedCalendarId ?? googleCalendars[0].id;
+    const initialCal = googleCalendars.find(c => c.id === initial) ?? googleCalendars[0];
 
       if (!isMountedRef.current) return;
 
@@ -532,7 +554,7 @@ export function ScheduleScreen() {
           id: ev.id,
           timeKey: start.getHours() * 60 + start.getMinutes(),
           title,
-          subtitle: `${formatTime(start)} - ${formatTime(end)} • ${t('schedule.googleCalendar.label')}`,
+          subtitle: `${formatTime(start)} • ${t('schedule.googleCalendar.label')}`,
           event: ev
         };
       })
@@ -565,6 +587,26 @@ export function ScheduleScreen() {
     }
     void loadGoogleEventsForMonth(currentDate);
   }, [selectedCalendarId, currentDate]);
+
+  useEffect(() => {
+    if (!selectedCalendarId) {
+      setSelectedCalendarLabel('');
+      return;
+    }
+
+    const loadLabel = async () => {
+      try {
+        const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+        const cal = calendars.find(c => c.id === selectedCalendarId);
+        if (!cal || !isMountedRef.current) return;
+        setSelectedCalendarLabel(formatCalendarLabel(cal));
+      } catch {
+        if (isMountedRef.current) setSelectedCalendarLabel('');
+      }
+    };
+
+    void loadLabel();
+  }, [selectedCalendarId]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
@@ -649,7 +691,7 @@ export function ScheduleScreen() {
           }}
         >
           <Text style={{ color: syncLoading ? colors.text : colors.primaryText, fontWeight: '700' }}>
-            {syncLoading ? 'Synchronizuję…' : 'Synchronizuj z kalendarzem'}
+            {syncLoading ? t('schedule.sync.inProgress') : t('schedule.sync.button')}
           </Text>
         </TouchableOpacity>
 
@@ -1141,19 +1183,19 @@ export function ScheduleScreen() {
               >
                 <Picker
                   selectedValue={selectedCalendarId}
-                  onValueChange={(v) => {
-                    setSelectedCalendarId(v);
-                    const found = calendarChoices.find(c => c.id === v);
-                    setSelectedCalendarLabel(found ? formatCalendarLabel(found) : '');
-                  }}
-                >
-                  {calendarChoices.map(cal => (
-                    <Picker.Item
-                      key={cal.id}
-                      label={`${cal.title} (${cal.ownerAccount || cal.source?.name || 'Google'})`}
-                      value={cal.id}
-                    />
-                  ))}
+                onValueChange={(v) => {
+                  setSelectedCalendarId(v);
+                  const found = calendarChoices.find(c => c.id === v);
+                  setSelectedCalendarLabel(found ? formatCalendarLabel(found) : '');
+                }}
+              >
+                {calendarChoices.map(cal => (
+                  <Picker.Item
+                    key={cal.id}
+                    label={cal.title || 'Google'}
+                    value={cal.id}
+                  />
+                ))}
                 </Picker>
               </View>
             )}

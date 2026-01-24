@@ -26,11 +26,7 @@ function AppContent() {
   const topInset = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
   if (!user) {
-    return (
-      <View style={{ flex: 1, paddingTop: topInset }}>
-        <LoginScreen />
-      </View>
-    );
+    return <LoginScreen />;
   }
 
   return (

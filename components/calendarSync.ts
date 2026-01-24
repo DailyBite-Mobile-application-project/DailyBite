@@ -204,7 +204,6 @@ export async function syncMealsToSystemCalendar(
           await Calendar.deleteEventAsync(ev.id);
           removed++;
         } catch {
-          // ignore delete errors to continue syncing
         }
       }
     }
@@ -242,7 +241,6 @@ export async function syncMealsToSystemCalendar(
           });
         }
       } catch {
-        // ignore update errors and continue
       }
       continue;
     }

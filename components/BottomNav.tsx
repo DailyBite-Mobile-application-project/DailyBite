@@ -1,4 +1,3 @@
-// BottomNav.tsx
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Home, Book, Calendar, User, Apple } from 'lucide-react-native';
 import { useApp } from './AppContext';
@@ -28,8 +27,7 @@ export function BottomNav({ active }: { active: NavItem }) {
         left: 0,
         right: 0,
         backgroundColor: colors.card,
-        borderTopWidth: 1,
-        borderColor: colors.border,
+        borderTopWidth: 0,
         paddingHorizontal: 18,
         paddingTop: 10,
         paddingBottom: Platform.OS === 'android' ? 16 : 10
@@ -56,9 +54,7 @@ export function BottomNav({ active }: { active: NavItem }) {
                 paddingVertical: 8,
                 paddingHorizontal: 10,
                 borderRadius: 12,
-                backgroundColor: isActive ? (colors.primarySoft ?? colors.soft) : colors.card,
-                borderWidth: colors.mode === 'dark' && !isActive ? 1 : 0,
-                borderColor: colors.mode === 'dark' && !isActive ? colors.border : 'transparent'
+                backgroundColor: isActive ? (colors.primarySoft ?? colors.soft) : colors.card
               }}
             >
               <item.icon size={22} color={isActive ? colors.primary : colors.muted} />

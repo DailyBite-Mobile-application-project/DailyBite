@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
   ScrollView,
   Alert,
   Keyboard,
@@ -113,11 +114,12 @@ export function LoginScreen() {
   };
 
   const brandBg = theme === 'dark' ? '#0b3d2a' : '#00c056ff';
+  const topInset = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, backgroundColor: brandBg }}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -127,7 +129,9 @@ export function LoginScreen() {
             flexGrow: 1,
             backgroundColor: brandBg,
             justifyContent: 'center',
-            padding: 20
+            paddingHorizontal: 20,
+            paddingBottom: 20,
+            paddingTop: 20 + topInset
           }}
         >
           {/* LANGUAGE SWITCH */}

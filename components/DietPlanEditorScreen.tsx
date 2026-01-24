@@ -9,7 +9,9 @@ import {
   Alert,
   ViewStyle,
   TextStyle,
-  ImageStyle
+  ImageStyle,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { ArrowLeft, Save, Trash2, Copy, Camera, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -215,7 +217,11 @@ export function DietPlanEditorScreen() {
   const removeImage = () => setImage(null);
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigate('diet-plans')} style={styles.backBtn}>
@@ -232,7 +238,7 @@ export function DietPlanEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* IMAGE SECTION */}
         <Text style={styles.label}>{t('planEditor.image')}</Text>
 
@@ -352,7 +358,7 @@ export function DietPlanEditorScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

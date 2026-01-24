@@ -165,7 +165,7 @@ export function DietPlansScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: 170,
+          paddingBottom: 220,
           paddingTop: 16,
           gap: 16
         }}
@@ -222,7 +222,7 @@ export function DietPlansScreen() {
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Stat icon={Clock} value={plan.duration} />
+                <Stat icon={Clock} value={plan.duration.replace('common.days', t('common.days'))} />
                 <Stat icon={Flame} value={`${plan.calories} ${t('common.kcal')}`} />
               </View>
             </View>
