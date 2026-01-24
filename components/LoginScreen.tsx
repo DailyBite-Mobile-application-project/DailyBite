@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
   type KeyboardTypeOptions
 } from 'react-native';
 import { Mail, Lock, User, Leaf } from 'lucide-react-native';
@@ -24,9 +26,13 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
 
-  const { login, language, setLanguage, theme  } = useApp();
+  const { login, language, setLanguage, theme } = useApp();
   const t = useT();
   const colors = useTheme();
+
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const nameRef = useRef<TextInput>(null);
 
   // DEV BYPASS (offline login) - tylko do testów
   // Dane: dev@local / dev
@@ -45,14 +51,28 @@ export function LoginScreen() {
     if (isSignUp && name.trim().length < 2) newErrors.name = t('err.nameShort');
     if (!email.includes('@')) newErrors.email = t('err.badEmail');
 
-    // wyjątek: dev bypass może mieć krótkie hasło
     if (!isDevBypass && password.length < 6) newErrors.password = t('err.passShort');
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const normalizeErrorMessage = (err: unknown) => {
+    // Zabezpieczenie przed "[object Object]"
+    if (err instanceof Error) return err.message || t('err.generic');
+
+    if (typeof err === 'string') return err;
+
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return t('err.generic');
+    }
+  };
+
   const handleSubmit = async () => {
+    Keyboard.dismiss();
+
     if (!validate()) return;
 
     // DEV BYPASS
@@ -71,193 +91,204 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
+      const safeEmail = email.trim().toLowerCase();
+
       if (isSignUp) {
-        await signup({ email, password });
-        const tokens = await apiLogin({ email, password });
+        await signup({ email: safeEmail, password });
+        const tokens = await apiLogin({ email: safeEmail, password });
         login(tokens);
       } else {
-        const tokens = await apiLogin({ email, password });
+        const tokens = await apiLogin({ email: safeEmail, password });
         login(tokens);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrors({ email: err.message });
-      } else {
-        setErrors({ email: t('err.generic') });
-      }
+      setErrors({ email: normalizeErrorMessage(err) });
     } finally {
       setLoading(false);
     }
   };
 
   const showForgotPasswordInfo = () => {
-    Alert.alert(
-      t('login.forgot.title'),
-      t('login.forgot.msg'),
-      [{ text: t('common.ok') }]
-    );
+    Alert.alert(t('login.forgot.title'), t('login.forgot.msg'), [{ text: t('common.ok') }]);
   };
 
-  // Login ma swoje “brand” tło – można je zostawić jako stałe,
-  // ale teksty i inputy muszą być theme-aware.
   const brandBg = theme === 'dark' ? '#0b3d2a' : '#00c056ff';
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          backgroundColor: brandBg,
-          justifyContent: 'center',
-          padding: 20
-        }}
-      >
-        {/* LANGUAGE SWITCH */}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
-          <LangBtn
-            label="PL"
-            active={language === 'pl'}
-            onPress={() => setLanguage('pl')}
-            colors={colors}
-          />
-          <View style={{ width: 8 }} />
-          <LangBtn
-            label="EN"
-            active={language === 'en'}
-            onPress={() => setLanguage('en')}
-            colors={colors}
-          />
-        </View>
-
-        {/* LOGO */}
-        <View style={{ alignItems: 'center', marginBottom: 32 }}>
-          <Leaf size={80} color="#ffffff" />
-          <Text style={{ fontSize: 32, color: 'white', fontWeight: '700', marginTop: 10 }}>
-            DailyBites
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.90)', marginTop: 4 }}>
-            {t('login.tagline')}
-          </Text>
-        </View>
-
-        {/* FORM */}
-        <View
-          style={{
-            borderRadius: 24,
-            padding: 24,
-            backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.25)' : '#ffffff22',
-            borderWidth: 1,
-            borderColor: theme === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            backgroundColor: brandBg,
+            justifyContent: 'center',
+            padding: 20
           }}
         >
-          {/* TABS */}
-          <View style={{ flexDirection: 'row', marginBottom: 20 }}>
-            <TouchableOpacity
-              onPress={() => setIsSignUp(false)}
-              style={{
-                flex: 1,
-                paddingVertical: 12,
-                backgroundColor: !isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                borderRadius: 12,
-                alignItems: 'center',
-                marginRight: 6
-              }}
-            >
-              <Text style={{ color: !isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
-                {t('login.tab.login')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setIsSignUp(true)}
-              style={{
-                flex: 1,
-                paddingVertical: 12,
-                backgroundColor: isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                borderRadius: 12,
-                alignItems: 'center',
-                marginLeft: 6
-              }}
-            >
-              <Text style={{ color: isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
-                {t('login.tab.signup')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* NAME FIELD */}
-          {isSignUp && (
-            <Field
-              icon={User}
-              value={name}
-              onChange={setName}
-              placeholder={t('login.name.placeholder')}
-              error={errors.name}
+          {/* LANGUAGE SWITCH */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <LangBtn
+              label="PL"
+              active={language === 'pl'}
+              onPress={() => setLanguage('pl')}
               colors={colors}
             />
-          )}
+            <View style={{ width: 8 }} />
+            <LangBtn
+              label="EN"
+              active={language === 'en'}
+              onPress={() => setLanguage('en')}
+              colors={colors}
+            />
+          </View>
 
-          {/* EMAIL */}
-          <Field
-            icon={Mail}
-            value={email}
-            onChange={setEmail}
-            placeholder={t('login.email.placeholder')}
-            error={errors.email}
-            keyboardType="email-address"
-            colors={colors}
-          />
+          {/* LOGO */}
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Leaf size={80} color="#ffffff" />
+            <Text style={{ fontSize: 32, color: 'white', fontWeight: '700', marginTop: 10 }}>
+              DailyBites
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.90)', marginTop: 4 }}>
+              {t('login.tagline')}
+            </Text>
+          </View>
 
-          {/* PASSWORD */}
-          <Field
-            icon={Lock}
-            value={password}
-            onChange={setPassword}
-            placeholder={t('login.password.placeholder')}
-            secure
-            error={errors.password}
-            colors={colors}
-          />
-
-          {/* FORGOT PASSWORD */}
-          {!isSignUp && (
-            <TouchableOpacity
-              onPress={showForgotPasswordInfo}
-              style={{ alignSelf: 'flex-end', marginBottom: 16 }}
-            >
-              <Text style={{ color: 'rgba(255,255,255,0.90)', fontWeight: '500' }}>
-                {t('login.forgot')}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* SUBMIT */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={loading}
+          {/* FORM */}
+          <View
             style={{
-              backgroundColor: loading ? 'rgba(255,255,255,0.7)' : '#ffffff',
-              paddingVertical: 14,
-              borderRadius: 12,
-              alignItems: 'center'
+              borderRadius: 24,
+              padding: 24,
+              backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.25)' : '#ffffff22',
+              borderWidth: 1,
+              borderColor: theme === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'
             }}
           >
-            <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 16 }}>
-              {loading ? t('login.wait') : isSignUp ? t('login.create') : t('login.tab.login')}
-            </Text>
-          </TouchableOpacity>
+            {/* TABS */}
+            <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+              <TouchableOpacity
+                onPress={() => setIsSignUp(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  backgroundColor: !isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  marginRight: 6
+                }}
+              >
+                <Text style={{ color: !isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
+                  {t('login.tab.login')}
+                </Text>
+              </TouchableOpacity>
 
-          {/* TERMS */}
-          {isSignUp && (
-            <Text style={{ textAlign: 'center', color: 'rgba(255,255,255,0.90)', marginTop: 16 }}>
-              {t('login.terms')}
-            </Text>
-          )}
-        </View>
-      </ScrollView>
+              <TouchableOpacity
+                onPress={() => setIsSignUp(true)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  backgroundColor: isSignUp ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  marginLeft: 6
+                }}
+              >
+                <Text style={{ color: isSignUp ? '#1f2937' : '#ffffff', fontWeight: '600' }}>
+                  {t('login.tab.signup')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* NAME FIELD */}
+            {isSignUp && (
+              <Field
+                inputRef={nameRef}
+                icon={User}
+                value={name}
+                onChange={setName}
+                placeholder={t('login.name.placeholder')}
+                error={errors.name}
+                colors={colors}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+                textContentType="name"
+                autoCorrect={false}
+              />
+            )}
+
+            {/* EMAIL */}
+            <Field
+              inputRef={emailRef}
+              icon={Mail}
+              value={email}
+              onChange={setEmail}
+              placeholder={t('login.email.placeholder')}
+              error={errors.email}
+              keyboardType="email-address"
+              colors={colors}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              textContentType="emailAddress"
+              autoCorrect={false}
+            />
+
+            {/* PASSWORD */}
+            <Field
+              inputRef={passwordRef}
+              icon={Lock}
+              value={password}
+              onChange={setPassword}
+              placeholder={t('login.password.placeholder')}
+              secure
+              error={errors.password}
+              colors={colors}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+              textContentType="password"
+              autoCorrect={false}
+            />
+
+            {/* FORGOT PASSWORD */}
+            {!isSignUp && (
+              <TouchableOpacity
+                onPress={showForgotPasswordInfo}
+                style={{ alignSelf: 'flex-end', marginBottom: 16 }}
+              >
+                <Text style={{ color: 'rgba(255,255,255,0.90)', fontWeight: '500' }}>
+                  {t('login.forgot')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* SUBMIT */}
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={loading}
+              style={{
+                backgroundColor: loading ? 'rgba(255,255,255,0.7)' : '#ffffff',
+                paddingVertical: 14,
+                borderRadius: 12,
+                alignItems: 'center'
+              }}
+            >
+              <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 16 }}>
+                {loading ? t('login.wait') : isSignUp ? t('login.create') : t('login.tab.login')}
+              </Text>
+            </TouchableOpacity>
+
+            {/* TERMS */}
+            {isSignUp && (
+              <Text style={{ textAlign: 'center', color: 'rgba(255,255,255,0.90)', marginTop: 16 }}>
+                {t('login.terms')}
+              </Text>
+            )}
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -285,9 +316,7 @@ function LangBtn({
         borderColor: active ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)'
       }}
     >
-      <Text style={{ fontWeight: '700', color: '#1f2937' }}>
-        {label}
-      </Text>
+      <Text style={{ fontWeight: '700', color: '#1f2937' }}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -301,6 +330,11 @@ type FieldProps = {
   error?: string;
   keyboardType?: KeyboardTypeOptions;
   colors: ReturnType<typeof useTheme>;
+  inputRef?: React.RefObject<TextInput>;
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
+  onSubmitEditing?: () => void;
+  textContentType?: any;
+  autoCorrect?: boolean;
 };
 
 function Field({
@@ -311,7 +345,12 @@ function Field({
   secure = false,
   error,
   keyboardType,
-  colors
+  colors,
+  inputRef,
+  returnKeyType,
+  onSubmitEditing,
+  textContentType,
+  autoCorrect
 }: FieldProps) {
   return (
     <View style={{ marginBottom: 16 }}>
@@ -320,6 +359,7 @@ function Field({
       </View>
 
       <TextInput
+        ref={inputRef}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
         value={value}
@@ -327,6 +367,10 @@ function Field({
         secureTextEntry={secure}
         autoCapitalize="none"
         keyboardType={keyboardType ?? 'default'}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        textContentType={textContentType}
+        autoCorrect={autoCorrect}
         style={{
           paddingLeft: 40,
           paddingVertical: 12,
