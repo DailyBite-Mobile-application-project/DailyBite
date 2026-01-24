@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
+  Alert,
   type ViewStyle
 } from 'react-native';
 import {
@@ -20,6 +21,7 @@ import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
 import { useT } from './i18n';
 import { useTheme } from './theme';
+import { syncMealsToSystemCalendar } from './calendarSync';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -31,6 +33,7 @@ export function ScheduleScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const [newDishId, setNewDishId] = useState<string | null>(null);
   const [newMealType, setNewMealType] = useState<MealType | ''>('');
@@ -109,6 +112,32 @@ export function ScheduleScreen() {
     setNewTime('');
   };
 
+  const handleSyncToCalendar = async () => {
+    if (syncLoading) return;
+
+    setSyncLoading(true);
+    try {
+      const res = await syncMealsToSystemCalendar(scheduledMeals as any, dishes as any, {
+        durationMinutes: 30,
+        clearExistingInRange: true,
+        titlePrefix: '🍽'
+      });
+
+      Alert.alert(
+        'OK',
+        `Zsynchronizowano z kalendarzem.\nDodano: ${res.created}\nUsunięto stare: ${res.removed}`
+      );
+    } catch (e: any) {
+      const msg =
+        e?.message === 'CALENDAR_PERMISSION_DENIED'
+          ? 'Brak dostępu do kalendarza (odmówione uprawnienia).'
+          : 'Nie udało się zsynchronizować z kalendarzem.';
+      Alert.alert('Błąd', msg);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   const navBtnStyle: ViewStyle = {
     width: 40,
     height: 40,
@@ -119,6 +148,9 @@ export function ScheduleScreen() {
     borderWidth: theme === 'dark' ? 1 : 0,
     borderColor: theme === 'dark' ? colors.border : 'transparent'
   };
+
+  // ZAMIENNIK colors.overlay (u Ciebie tego nie ma w theme)
+  const modalOverlayBg = theme === 'dark' ? 'rgba(0,0,0,0.60)' : 'rgba(0,0,0,0.35)';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
@@ -188,11 +220,30 @@ export function ScheduleScreen() {
           </View>
         </View>
 
+        {/* SYNC BUTTON */}
+        <TouchableOpacity
+          onPress={handleSyncToCalendar}
+          disabled={syncLoading}
+          style={{
+            backgroundColor: syncLoading ? colors.soft : colors.primary,
+            paddingVertical: 10,
+            borderRadius: 12,
+            alignItems: 'center',
+            marginBottom: 12,
+            borderWidth: theme === 'dark' && syncLoading ? 1 : 0,
+            borderColor: theme === 'dark' && syncLoading ? colors.border : 'transparent'
+          }}
+        >
+          <Text style={{ color: syncLoading ? colors.text : colors.primaryText, fontWeight: '700' }}>
+            {syncLoading ? 'Synchronizuję…' : 'Synchronizuj z kalendarzem'}
+          </Text>
+        </TouchableOpacity>
+
         {/* DAYS OF WEEK */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {weekDays.map((d) => (
+          {weekDays.map((d,i) => (
             <Text
-              key={d}
+              key={`${d}-${i}`}
               style={{ width: '14%', textAlign: 'center', color: colors.subtext }}
             >
               {d}
@@ -355,7 +406,7 @@ export function ScheduleScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: colors.overlay,
+            backgroundColor: modalOverlayBg,
             justifyContent: 'center',
             padding: 20
           }}
