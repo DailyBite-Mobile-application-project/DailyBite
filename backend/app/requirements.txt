@@ -1,0 +1,27 @@
+# --- FastAPI core ---
+fastapi
+uvicorn[standard]
+
+# --- Environment variables ---
+python-dotenv
+
+# --- Database (MongoDB) ---
+pymongo
+
+# --- Auth / Security ---
+python-jose
+passlib[bcrypt]
+
+# --- Validation / Schemas ---
+pydantic
+pydantic-settings
+
+# --- HTTP / external APIs ---
+requests
+
+# --- Testing (opcjonalne, ale warto mieć) ---
+pytest
+
+motor
+pymongo
+email-validator
