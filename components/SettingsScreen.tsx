@@ -137,7 +137,7 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* THEME + LANGUAGE (DODANE, NIE USUWAJĄ RESZTY) */}
+        {/* THEME + LANGUAGE */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10, color: colors.text }}>
             {t('settings.theme')}
