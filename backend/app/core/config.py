@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Mongo
     MONGO_URI: str
     MONGO_DB_NAME: str = "dailybite"
+    MONGO_DB: str | None = None
 
     # JWT
     JWT_SECRET: str

@@ -84,7 +84,8 @@ def _product_from_usda_record(original_name: str, record: dict) -> Product:
 def _get_produkty_collection():
 
     client = MongoClient(settings.MONGO_URI)
-    db = client[settings.MONGO_DB_NAME]
+    db_name = settings.MONGO_DB or settings.MONGO_DB_NAME or "dailybite"
+    db = client[db_name]
     return db["products"]
 
 

@@ -21,7 +21,8 @@ def connect_to_mongo() -> None:
         socketTimeoutMS=20000,
         maxPoolSize=20,
     )
-    _db = _client[settings.MONGO_DB_NAME]
+    db_name = settings.MONGO_DB or settings.MONGO_DB_NAME or "dailybite"
+    _db = _client[db_name]
 
 
 def close_mongo_connection() -> None:
