@@ -3,6 +3,7 @@ from typing import Optional
 
 
 class UserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)  # <-- DODANE
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
 
@@ -14,8 +15,9 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     id: Optional[str]
+    name: str
     email: EmailStr
-    is_active: bool
+    is_active: bool = True
 
 
 class RefreshTokenRequest(BaseModel):
@@ -26,3 +28,5 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+    user: UserResponse

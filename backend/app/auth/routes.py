@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 from jose import JWTError, jwt
 
-from app.auth.models import UserCreate, UserLogin, RefreshTokenRequest
+from app.auth.models import (
+    UserCreate,
+    UserLogin,
+    RefreshTokenRequest,
+    UserResponse,
+    TokenResponse,
+)
 from app.auth.services import (
     create_user,
     authenticate_user,
@@ -14,7 +20,21 @@ from app.core.config import settings
 router = APIRouter()
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+def to_user_response(user: dict) -> UserResponse:
+    """
+    Normalizuje obiekt usera z DB do DTO dla frontu.
+    Obsługuje zarówno 'id' jak i Mongo '_id'.
+    """
+    uid = user.get("id") or user.get("_id")
+    return UserResponse(
+        id=str(uid) if uid is not None else None,
+        name=str(user.get("name") or "").strip(),
+        email=user["email"],
+        is_active=bool(user.get("is_active", True)),
+    )
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: UserCreate):
     existing = await get_user_by_email(payload.email)
     if existing:
@@ -23,11 +43,15 @@ async def register(payload: UserCreate):
             detail="Email already registered",
         )
 
-    user = await create_user(payload.email, payload.password)
-    return {"id": str(user["id"]), "email": user["email"]}
+    # WAŻNE: create_user musi przyjąć name i go zapisać
+    # Zmień create_user(...) w services, jeśli jeszcze nie przyjmuje name.
+    user = await create_user(payload.email, payload.password, payload.name)
+
+    # user powinien być dokumentem z DB (np. {"_id": ..., "email": ..., "name": ..., ...})
+    return to_user_response(user)
 
 
-@router.post("/token", status_code=status.HTTP_200_OK)
+@router.post("/token", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def login(payload: UserLogin):
     user = await authenticate_user(payload.email, payload.password)
     if not user:
@@ -36,10 +60,16 @@ async def login(payload: UserLogin):
             detail="Invalid credentials",
         )
 
-    return await create_tokens_for_user(user)
+    tokens = await create_tokens_for_user(user)
+
+    # tokens np. {access_token, refresh_token, token_type}
+    return TokenResponse(
+        **tokens,
+        user=to_user_response(user),
+    )
 
 
-@router.post("/refresh", status_code=status.HTTP_200_OK)
+@router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def refresh_token(payload: RefreshTokenRequest):
     db = get_database()
 
@@ -75,5 +105,20 @@ async def refresh_token(payload: RefreshTokenRequest):
             detail="Invalid or revoked token",
         )
 
+    # Pobieramy usera, żeby zwrócić user.name/email w odpowiedzi
+    user = await db.users.find_one({"_id": user_id})
+    if not user:
+        # w razie gdyby _id było ObjectId a user_id string:
+        user = await db.users.find_one({"id": user_id})
 
-    return await create_tokens_for_user({"id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    tokens = await create_tokens_for_user(user)
+    return TokenResponse(
+        **tokens,
+        user=to_user_response(user),
+    )

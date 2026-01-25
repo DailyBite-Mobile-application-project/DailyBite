@@ -4,31 +4,35 @@ from dataclasses import dataclass
 @dataclass
 class Product:
     nazwa: str
+    kategoria: str = "Inne"
+
     kalorie: float = 0.0
     bialko: float = 0.0
     weglowodany: float = 0.0
-    tluszcze: float = 0.0
-    waga: float = 100.0
+    tluszcz: float = 0.0  # UJEDNOLICONE
+    waga: float = 100.0   # per 100g
 
     def __post_init__(self) -> None:
         if not self.nazwa or not str(self.nazwa).strip():
             raise ValueError("nazwa nie może być pusta")
 
-
         self.nazwa = str(self.nazwa).strip()
+        self.kategoria = str(self.kategoria or "Inne").strip()
+
         self.kalorie = float(self.kalorie or 0)
         self.bialko = float(self.bialko or 0)
         self.weglowodany = float(self.weglowodany or 0)
-        self.tluszcze = float(self.tluszcze or 0)
+        self.tluszcz = float(self.tluszcz or 0)
         self.waga = float(self.waga or 100)
 
     def to_dict(self) -> dict:
         return {
             "nazwa": self.nazwa,
+            "kategoria": self.kategoria,
             "kalorie": self.kalorie,
             "bialko": self.bialko,
             "weglowodany": self.weglowodany,
-            "tluszcze": self.tluszcze,
+            "tluszcz": self.tluszcz,
             "waga": self.waga,
         }
 

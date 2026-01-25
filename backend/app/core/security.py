@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.db.database import get_database
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
 
 def create_access_token(subject: str) -> str:
@@ -19,16 +19,12 @@ def create_access_token(subject: str) -> str:
     )
 
     payload: Dict[str, Any] = {
-        "sub": subject,
+        "sub": str(subject),
         "exp": expire,
         "type": "access",
     }
 
-    return jwt.encode(
-        payload,
-        settings.JWT_SECRET,
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def create_refresh_token(subject: str) -> str:
@@ -37,21 +33,15 @@ def create_refresh_token(subject: str) -> str:
     )
 
     payload: Dict[str, Any] = {
-        "sub": subject,
+        "sub": str(subject),
         "exp": expire,
         "type": "refresh",
     }
 
-    return jwt.encode(
-        payload,
-        settings.JWT_SECRET,
-        algorithm=settings.JWT_ALGORITHM,
-    )
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-) -> dict:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -71,17 +61,16 @@ async def get_current_user(
         raise credentials_exception
 
     user_id = payload.get("sub")
-    if not user_id:
+    if not user_id or not isinstance(user_id, str):
+        raise credentials_exception
+
+    # wymagamy, żeby sub był ObjectId string
+    if not ObjectId.is_valid(user_id):
         raise credentials_exception
 
     db = get_database()
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
 
-    try:
-        oid = ObjectId(user_id)
-    except Exception:
-        raise credentials_exception
-
-    user = await db.users.find_one({"_id": oid})
     if not user:
         raise credentials_exception
 
@@ -93,5 +82,5 @@ async def get_current_user(
 
     return {
         "id": str(user["_id"]),
-        "email": user["email"],
+        "email": user.get("email", ""),
     }
