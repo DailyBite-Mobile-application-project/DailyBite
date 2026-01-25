@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
 
@@ -7,11 +5,23 @@ MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 
 
 class ScheduledMealCreate(BaseModel):
-  date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")   # YYYY-MM-DD
-  time: str = Field(pattern=r"^\d{2}:\d{2}$")         # HH:MM
-  dishId: str = Field(min_length=1)
-  type: MealType
+    date: str = Field(..., description="YYYY-MM-DD")
+    time: str = Field(..., description="HH:MM")
+    dishId: str
+    type: MealType
 
 
-class ScheduledMealResponse(ScheduledMealCreate):
-  id: str
+class ScheduledMealUpdate(BaseModel):
+    date: Optional[str] = Field(None, description="YYYY-MM-DD")
+    time: Optional[str] = Field(None, description="HH:MM")
+    dishId: Optional[str] = None
+    type: Optional[MealType] = None
+
+
+class ScheduledMealOut(BaseModel):
+    id: str
+    userId: str
+    date: str
+    time: str
+    dishId: str
+    type: MealType
