@@ -1,16 +1,14 @@
 from dataclasses import dataclass
 
-
 @dataclass
 class Product:
     nazwa: str
     kategoria: str = "Inne"
-
     kalorie: float = 0.0
     bialko: float = 0.0
     weglowodany: float = 0.0
-    tluszcz: float = 0.0  # UJEDNOLICONE
-    waga: float = 100.0   # per 100g
+    tluszcz: float = 0.0
+    waga: float = 100.0
 
     def __post_init__(self) -> None:
         if not self.nazwa or not str(self.nazwa).strip():
@@ -18,7 +16,6 @@ class Product:
 
         self.nazwa = str(self.nazwa).strip()
         self.kategoria = str(self.kategoria or "Inne").strip()
-
         self.kalorie = float(self.kalorie or 0)
         self.bialko = float(self.bialko or 0)
         self.weglowodany = float(self.weglowodany or 0)

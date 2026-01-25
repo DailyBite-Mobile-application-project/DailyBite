@@ -12,7 +12,7 @@ def serialize_product(item: dict) -> dict:
         "kalorie": item.get("kalorie", 0),
         "bialko": item.get("bialko", 0),
         "weglowodany": item.get("weglowodany", 0),
-        "tluszcz": item.get("tluszcz", 0),   # UJEDNOLICONE
+        "tluszcz": item.get("tluszcz", 0),
         "waga": item.get("waga", 100),
     }
 
@@ -42,5 +42,4 @@ async def search_products(
     async for item in cursor:
         results.append(serialize_product(item))
 
-    # Lepsze UX: 200 + []
     return results

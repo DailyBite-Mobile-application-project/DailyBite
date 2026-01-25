@@ -68,7 +68,7 @@ def _product_from_usda_record(original_name: str, record: dict) -> Product:
 
     kalorie = get_nutrient_value(1008)
     bialko = get_nutrient_value(1003)
-    tluszcze = get_nutrient_value(1004)
+    tluszcz = get_nutrient_value(1004)
     weglowodany = get_nutrient_value(1005)
 
     return Product(
@@ -76,7 +76,7 @@ def _product_from_usda_record(original_name: str, record: dict) -> Product:
         kalorie=kalorie,
         bialko=bialko,
         weglowodany=weglowodany,
-        tluszcze=tluszcze,
+        tluszcz=tluszcz,
         waga=100,
     )
 
@@ -85,7 +85,7 @@ def _get_produkty_collection():
 
     client = MongoClient(settings.MONGO_URI)
     db = client[settings.MONGO_DB_NAME]
-    return db["produkty"]
+    return db["products"]
 
 
 def main() -> None:
