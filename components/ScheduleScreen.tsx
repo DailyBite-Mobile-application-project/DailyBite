@@ -897,7 +897,13 @@ export function ScheduleScreen() {
                     backgroundColor: colors.input
                   }}
                 >
-                  <Picker selectedValue={newDishId} onValueChange={(v) => setNewDishId(v)}>
+                  <Picker
+                    selectedValue={newDishId}
+                    onValueChange={(v) => setNewDishId(v)}
+                    style={{ color: colors.text }}
+                    itemStyle={{ color: colors.text }}
+                    dropdownIconColor={colors.text}
+                  >
                     <Picker.Item label={t('schedule.selectDish')} value={null} />
                     {dishes.map(d => (
                       <Picker.Item key={d.id} label={d.name} value={d.id} />
@@ -917,7 +923,13 @@ export function ScheduleScreen() {
                     backgroundColor: colors.input
                   }}
                 >
-                  <Picker selectedValue={newPlanId} onValueChange={(v) => setNewPlanId(v)}>
+                  <Picker
+                    selectedValue={newPlanId}
+                    onValueChange={(v) => setNewPlanId(v)}
+                    style={{ color: colors.text }}
+                    itemStyle={{ color: colors.text }}
+                    dropdownIconColor={colors.text}
+                  >
                     <Picker.Item label={t('schedule.selectPlan')} value={null} />
                     {dietPlans.map(plan => (
                       <Picker.Item key={plan.id} label={plan.name} value={plan.id} />
@@ -937,7 +949,13 @@ export function ScheduleScreen() {
                 backgroundColor: colors.input
               }}
             >
-              <Picker selectedValue={newMealType} onValueChange={(v) => setNewMealType(v)}>
+              <Picker
+                selectedValue={newMealType}
+                onValueChange={(v) => setNewMealType(v)}
+                style={{ color: colors.text }}
+                itemStyle={{ color: colors.text }}
+                dropdownIconColor={colors.text}
+              >
                 <Picker.Item label={t('schedule.selectType')} value="" />
                 <Picker.Item label={t('meal.breakfast')} value="breakfast" />
                 <Picker.Item label={t('meal.lunch')} value="lunch" />
@@ -956,7 +974,13 @@ export function ScheduleScreen() {
                 backgroundColor: colors.input
               }}
             >
-              <Picker selectedValue={newTime} onValueChange={(v) => setNewTime(v)}>
+              <Picker
+                selectedValue={newTime}
+                onValueChange={(v) => setNewTime(v)}
+                style={{ color: colors.text }}
+                itemStyle={{ color: colors.text }}
+                dropdownIconColor={colors.text}
+              >
                 <Picker.Item label={t('schedule.selectTime')} value="" />
                 {timeOptions.map(time => (
                   <Picker.Item key={time} label={time} value={time} />
@@ -1027,7 +1051,13 @@ export function ScheduleScreen() {
                 backgroundColor: colors.input
               }}
             >
-              <Picker selectedValue={editingTime} onValueChange={(v) => setEditingTime(v)}>
+              <Picker
+                selectedValue={editingTime}
+                onValueChange={(v) => setEditingTime(v)}
+                style={{ color: colors.text }}
+                itemStyle={{ color: colors.text }}
+                dropdownIconColor={colors.text}
+              >
                 <Picker.Item label={t('schedule.selectTime')} value="" />
                 {timeOptions.map(time => (
                   <Picker.Item key={time} label={time} value={time} />
@@ -1110,6 +1140,9 @@ export function ScheduleScreen() {
                     const found = calendarChoices.find(c => c.id === v);
                     setSelectedCalendarLabel(found ? formatCalendarLabel(found) : '');
                   }}
+                  style={{ color: colors.text }}
+                  itemStyle={{ color: colors.text }}
+                  dropdownIconColor={colors.text}
                 >
                   {calendarChoices.map(cal => (
                     <Picker.Item key={cal.id} label={cal.title || 'Google'} value={cal.id} />

@@ -117,13 +117,14 @@ export function ProductsScreen() {
 
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
           <View
             style={{
               backgroundColor: colors.card,
@@ -271,6 +272,7 @@ export function ProductsScreen() {
 
       {!loading && !ctxLoading && !errorMsg && !ctxError && (
         <ScrollView
+          style={{ flex: 1, backgroundColor: colors.bg }}
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingVertical: 16,
@@ -354,10 +356,11 @@ export function ProductsScreen() {
         </ScrollView>
       )}
 
-          <BottomNav active="products" />
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
+    <BottomNav active="products" />
+    </View>
   );
 }
 
