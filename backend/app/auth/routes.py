@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
+from bson import ObjectId
 from jose import JWTError, jwt
 
 from app.auth.models import (
@@ -49,7 +50,7 @@ async def register(payload: UserCreate):
 
 @router.post("/token", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def login(payload: UserLogin):
-    user = await authenticate_user(payload.email, payload.password, payload.name)
+    user = await authenticate_user(payload.email, payload.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,7 +102,9 @@ async def refresh_token(payload: RefreshTokenRequest):
             detail="Invalid or revoked token",
         )
 
-    user = await db.users.find_one({"_id": user_id})
+    user = None
+    if ObjectId.is_valid(user_id):
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
     if not user:
         user = await db.users.find_one({"id": user_id})
 

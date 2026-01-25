@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  RefreshControl,
   ViewStyle,
   TextStyle,
   ImageStyle,
@@ -18,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useApp } from './AppContext';
 import { useT } from './i18n';
 import { useTheme } from './theme';
+import { createDietPlan, updateDietPlan } from './api';
 
 type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
@@ -46,7 +48,10 @@ export function DietPlanEditorScreen() {
     setDietPlans,
     selectedDietId,
     dishes,
-    products
+    products,
+    accessToken,
+    loadDishes,
+    loadProducts
   } = useApp();
 
   const existingPlan = selectedDietId
@@ -94,7 +99,8 @@ export function DietPlanEditorScreen() {
         calories += product.calories * m;
         protein += product.protein * m;
         carbs += product.carbs * m;
-        fats += product.fats * m;
+        const fatsValue = Number((product as any).fats ?? (product as any).fat ?? 0);
+        fats += fatsValue * m;
       }
     }
 
@@ -128,7 +134,7 @@ export function DietPlanEditorScreen() {
     }
   };
 
-  const savePlan = () => {
+  const savePlan = async () => {
     if (!name.trim()) {
       Alert.alert(
         t('planEditor.alert.missingName.title'),
@@ -184,10 +190,39 @@ export function DietPlanEditorScreen() {
       nutritionTotal: nutrition 
     };
 
+    // lokalny zapis (UI natychmiast)
     if (existingPlan) {
       setDietPlans(dietPlans.map(p => (p.id === existingPlan.id ? newPlan : p)));
     } else {
       setDietPlans([...dietPlans, newPlan]);
+    }
+
+    // backend zapis (jeśli zalogowany)
+    if (accessToken) {
+      try {
+        const payload = {
+          name: name.trim(),
+          description: description.trim(),
+          durationDays: daysNumber,
+          category,
+          imageUrl: image,
+          dishIds: assignedDishes,
+          nutritionTotal: {
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            carbs: nutrition.carbs,
+            fat: nutrition.fats
+          }
+        };
+
+        if (existingPlan?.id) {
+          await updateDietPlan(existingPlan.id, payload as any, accessToken);
+        } else {
+          await createDietPlan(payload as any, accessToken);
+        }
+      } catch (e: any) {
+        Alert.alert(t('common.error'), e?.message ?? t('err.generic'));
+      }
     }
 
     navigate('diet-plans');
@@ -248,6 +283,18 @@ export function DietPlanEditorScreen() {
 
   const removeImage = () => setImage(null);
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadDishes();
+      await loadProducts();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -270,7 +317,11 @@ export function DietPlanEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {/* IMAGE SECTION */}
         <Text style={styles.label}>{t('planEditor.image')}</Text>
 

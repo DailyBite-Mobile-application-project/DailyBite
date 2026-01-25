@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   ScrollView,
   TouchableOpacity,
-  Image
+  Image,
+  RefreshControl
 } from 'react-native';
 import { ArrowLeft, Clock, Flame, Search, Plus } from 'lucide-react-native';
 import { useApp } from './AppContext';
@@ -16,9 +17,10 @@ import { useTheme } from './theme';
 type DietCategory = 'All' | 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
 export function DietPlansScreen() {
-  const { dietPlans, navigate, openDietDetail, openDietPlanEditor } = useApp();
+  const { dietPlans, navigate, openDietDetail, openDietPlanEditor, loadDietPlans } = useApp();
   const t = useT();
   const colors = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DietCategory>('All');
@@ -57,6 +59,21 @@ export function DietPlansScreen() {
       return matchesSearch && matchesCategory;
     });
   }, [dietPlans, searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    if (dietPlans.length === 0) {
+      void loadDietPlans();
+    }
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadDietPlans();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fallbackImage =
     'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
@@ -190,6 +207,7 @@ export function DietPlansScreen() {
           paddingTop: 16,
           gap: 16
         }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {filteredPlans.map((plan: any) => (
           <TouchableOpacity

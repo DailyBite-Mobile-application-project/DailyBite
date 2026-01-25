@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
-import { fetchProducts } from './api'; 
+import { fetchProducts, fetchDishes, fetchDietPlans } from './api'; 
 export type Screen =
   | 'login'
   | 'main'
@@ -22,8 +22,17 @@ export type DietPlan = {
   duration: string; 
   category: string;
   image?: string | null;
+  imageUrl?: string | null;
+  durationDays?: number;
   dishIds: string[];
   calories: number;
+  nutritionTotal?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat?: number;
+    fats?: number;
+  };
 };
 
 export type Product = {
@@ -32,7 +41,8 @@ export type Product = {
   calories: number;
   protein: number;
   carbs: number;
-  fats: number; 
+  fats: number;
+  fat?: number; 
   category: string;
 };
 
@@ -40,9 +50,19 @@ export type Dish = {
   id: string;
   name: string;
   products: { productId: string; amount: number }[];
+  ingredients?: { productId: string; grams: number }[];
   instructions: string;
   prepTime: number;
+  prepTimeMinutes?: number;
   image?: string | null;
+  imageUrl?: string | null;
+  nutritionTotal?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat?: number;
+    fats?: number;
+  };
 };
 
 export type ScheduledMeal = {
@@ -66,6 +86,8 @@ export type User = {
 
 type AppContextType = {
   user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   login: (userLike: any) => void;
   logout: () => void;
 
@@ -81,6 +103,7 @@ type AppContextType = {
 
   dietPlans: DietPlan[];
   setDietPlans: (plans: DietPlan[]) => void;
+  loadDietPlans: () => Promise<void>;
 
   products: Product[];
   setProducts: (products: Product[]) => void;
@@ -90,6 +113,7 @@ type AppContextType = {
 
   dishes: Dish[];
   setDishes: (dishes: Dish[]) => void;
+  loadDishes: () => Promise<void>;
 
   scheduledMeals: ScheduledMeal[];
   setScheduledMeals: (meals: ScheduledMeal[]) => void;
@@ -149,6 +173,70 @@ function normalizeProduct(p: any): Product | null {
     protein: Number(p?.bialko ?? p?.protein ?? 0),
     carbs: Number(p?.weglowodany ?? p?.carbs ?? 0),
     fats: Number(p?.tluszcz ?? p?.fat ?? p?.fats ?? 0),
+    fat: Number(p?.tluszcz ?? p?.fat ?? p?.fats ?? 0),
+  };
+}
+
+function normalizeDishFromApi(d: any): Dish {
+  const ingredients = Array.isArray(d?.ingredients) ? d.ingredients : Array.isArray(d?.products) ? d.products : [];
+  const products = ingredients.map((i: any) => ({
+    productId: String(i?.productId ?? ''),
+    amount: Number(i?.amount ?? i?.grams ?? 0),
+  }));
+
+  const nutritionTotal = d?.nutritionTotal
+    ? {
+        calories: Number(d.nutritionTotal.calories ?? 0),
+        protein: Number(d.nutritionTotal.protein ?? 0),
+        carbs: Number(d.nutritionTotal.carbs ?? 0),
+        fat: Number(d.nutritionTotal.fat ?? d.nutritionTotal.fats ?? 0),
+        fats: Number(d.nutritionTotal.fat ?? d.nutritionTotal.fats ?? 0),
+      }
+    : undefined;
+
+  return {
+    id: String(d?.id ?? d?._id ?? ''),
+    name: String(d?.name ?? ''),
+    products,
+    ingredients: ingredients.map((i: any) => ({
+      productId: String(i?.productId ?? ''),
+      grams: Number(i?.grams ?? i?.amount ?? 0),
+    })),
+    instructions: String(d?.instructions ?? ''),
+    prepTime: Number(d?.prepTime ?? d?.prepTimeMinutes ?? 0),
+    prepTimeMinutes: Number(d?.prepTimeMinutes ?? d?.prepTime ?? 0),
+    image: d?.image ?? null,
+    imageUrl: d?.imageUrl ?? null,
+    nutritionTotal,
+  };
+}
+
+function normalizeDietPlanFromApi(p: any): DietPlan {
+  const nutritionTotal = p?.nutritionTotal
+    ? {
+        calories: Number(p.nutritionTotal.calories ?? 0),
+        protein: Number(p.nutritionTotal.protein ?? 0),
+        carbs: Number(p.nutritionTotal.carbs ?? 0),
+        fat: Number(p.nutritionTotal.fat ?? p.nutritionTotal.fats ?? 0),
+        fats: Number(p.nutritionTotal.fat ?? p.nutritionTotal.fats ?? 0),
+      }
+    : undefined;
+
+  const durationDays = Number(p?.durationDays ?? 0);
+  const duration = durationDays > 0 ? `${durationDays} dni` : String(p?.duration ?? '');
+
+  return {
+    id: String(p?.id ?? p?._id ?? ''),
+    name: String(p?.name ?? ''),
+    description: String(p?.description ?? ''),
+    duration,
+    durationDays: durationDays || undefined,
+    category: String(p?.category ?? ''),
+    image: p?.image ?? null,
+    imageUrl: p?.imageUrl ?? null,
+    dishIds: Array.isArray(p?.dishIds) ? p.dishIds.map((id: any) => String(id)) : [],
+    calories: Number(p?.calories ?? nutritionTotal?.calories ?? 0),
+    nutritionTotal,
   };
 }
 
@@ -174,6 +262,8 @@ function normalizeUser(userLike: any): User {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
 
   const [selectedDietId, setSelectedDietId] = useState<string | null>(null);
@@ -221,11 +311,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = (userLike: any) => {
     const normalized = normalizeUser(userLike);
     setUser(normalized);
+    if (userLike?.access_token) setAccessToken(String(userLike.access_token));
+    if (userLike?.refresh_token) setRefreshToken(String(userLike.refresh_token));
     navigate('main');
   };
 
   const logout = () => {
     setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
     navigate('login');
   };
 
@@ -255,10 +349,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loadDishes = async () => {
+    if (!accessToken) return;
+    try {
+      const list = await fetchDishes(accessToken);
+      if (Array.isArray(list) && list.length > 0) {
+        setDishes(list.map(normalizeDishFromApi));
+      }
+    } catch {
+      // zostawiamy lokalny stan jako fallback
+    }
+  };
+
+  const loadDietPlans = async () => {
+    if (!accessToken) return;
+    try {
+      const list = await fetchDietPlans(accessToken);
+      if (Array.isArray(list) && list.length > 0) {
+        setDietPlans(list.map(normalizeDietPlanFromApi));
+      }
+    } catch {
+      // zostawiamy lokalny stan jako fallback
+    }
+  };
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void loadProducts();
+    void loadDishes();
+    void loadDietPlans();
+  }, [accessToken]);
+
   return (
     <AppContextInternal.Provider
       value={{
         user,
+        accessToken,
+        refreshToken,
         login,
         logout,
 
@@ -274,6 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         dietPlans,
         setDietPlans,
+        loadDietPlans,
 
         products,
         setProducts,
@@ -283,6 +411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         dishes,
         setDishes,
+        loadDishes,
 
         scheduledMeals,
         setScheduledMeals,

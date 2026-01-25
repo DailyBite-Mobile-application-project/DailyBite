@@ -14,12 +14,13 @@ import { Picker } from '@react-native-picker/picker';
 import { useApp } from './AppContext';
 import { useT } from './i18n';
 import { useTheme } from './theme';
+import { createDish, updateDish } from './api';
 
 type Ingredient = { productId: string; amount: number };
 type Nutrition = { calories: number; protein: number; carbs: number; fats: number };
 
 export function DishEditorScreen() {
-  const { navigate, selectedDishId, dishes, setDishes, products } = useApp();
+  const { navigate, selectedDishId, dishes, setDishes, products, accessToken } = useApp();
   const t = useT();
   const colors = useTheme();
 
@@ -48,7 +49,8 @@ export function DishEditorScreen() {
       calories += product.calories * m;
       protein += product.protein * m;
       carbs += product.carbs * m;
-      fats += product.fats * m;
+      const fatsValue = Number((product as any).fats ?? (product as any).fat ?? 0);
+      fats += fatsValue * m;
     }
 
     return {
@@ -89,7 +91,7 @@ export function DishEditorScreen() {
     setIngredients(prev => prev.filter((_, i) => i !== index));
   };
 
-  const saveDish = () => {
+  const saveDish = async () => {
     if (!dishName.trim()) {
       Alert.alert(t('dishEditor.alert.missingName.title'), t('dishEditor.alert.missingName.msg'));
       return;
@@ -132,10 +134,37 @@ export function DishEditorScreen() {
       nutritionTotal: nutrition
     };
 
+    // lokalny zapis (UI natychmiast)
     if (existingDish) {
       setDishes(dishes.map(d => (d.id === existingDish.id ? newDish : d)));
     } else {
       setDishes([...dishes, newDish]);
+    }
+
+    // backend zapis (jeśli zalogowany)
+    if (accessToken) {
+      try {
+        const payload = {
+          name: dishName.trim(),
+          prepTimeMinutes: prep,
+          instructions: instructions.trim(),
+          ingredients: ingredients.map(i => ({ productId: i.productId, grams: Number(i.amount) })),
+          nutritionTotal: {
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            carbs: nutrition.carbs,
+            fat: nutrition.fats
+          }
+        };
+
+        if (existingDish?.id) {
+          await updateDish(existingDish.id, payload as any, accessToken);
+        } else {
+          await createDish(payload as any, accessToken);
+        }
+      } catch (e: any) {
+        Alert.alert(t('common.error'), e?.message ?? t('err.generic'));
+      }
     }
 
     navigate('main');

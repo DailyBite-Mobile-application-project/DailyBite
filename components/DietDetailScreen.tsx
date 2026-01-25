@@ -62,7 +62,8 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
         acc.calories += product.calories * m;
         acc.protein += product.protein * m;
         acc.carbs += product.carbs * m;
-        acc.fats += product.fats * m;
+        const fatsValue = Number((product as any).fats ?? (product as any).fat ?? 0);
+        acc.fats += fatsValue * m;
       });
 
       return acc;

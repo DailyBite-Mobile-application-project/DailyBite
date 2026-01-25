@@ -49,9 +49,14 @@ async def create_plan(
 ):
     db = get_database()
 
-    # opcjonalnie: waliduj czy dishIds należą do usera
-    count = await db.dishes.count_documents({"user_id": user["id"], "_id": {"$in": [ObjectId(d) for d in payload.dishIds if ObjectId.is_valid(d)]}})
-    if count == 0:
+    valid_ids = [ObjectId(d) for d in payload.dishIds if ObjectId.is_valid(d)]
+    if len(valid_ids) != len(payload.dishIds):
+        raise HTTPException(status_code=400, detail="dishIds invalid")
+
+    count = await db.dishes.count_documents(
+        {"user_id": user["id"], "_id": {"$in": valid_ids}}
+    )
+    if count != len(valid_ids):
         raise HTTPException(status_code=400, detail="dishIds invalid or not owned by user")
 
     doc = payload.model_dump()

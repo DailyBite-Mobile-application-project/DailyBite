@@ -12,19 +12,27 @@ import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
 import { useT } from './i18n';
 import { useTheme } from './theme';
-import { fetchProducts, searchProducts, type Product as ApiProduct } from './api';
+import { fetchProducts, type Product as ApiProduct } from './api';
 
 type ProductCategory = 'All' | 'Protein' | 'Grains' | 'Vegetables' | 'Fats' | 'Dairy';
 
 export function ProductsScreen() {
-  const { navigate, theme } = useApp();
+  const {
+    navigate,
+    theme,
+    products: ctxProducts,
+    setProducts: setCtxProducts,
+    loadProducts: loadCtxProducts,
+    productsLoading: ctxLoading,
+    productsError: ctxError
+  } = useApp();
   const t = useT();
   const colors = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('All');
 
-  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [products, setProducts] = useState<ApiProduct[]>(ctxProducts ?? []);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -56,7 +64,13 @@ export function ProductsScreen() {
     setErrorMsg(null);
     try {
       const list = await fetchProducts();
-      setProducts(list);
+      const normalized = list.map((p: any) => ({
+        ...p,
+        fats: Number(p?.fats ?? p?.fat ?? 0),
+        fat: Number(p?.fat ?? p?.fats ?? 0),
+      }));
+      setProducts(normalized as any);
+      setCtxProducts(normalized as any);
     } catch (e: any) {
       setErrorMsg(e?.message || t('err.generic'));
     } finally {
@@ -65,9 +79,18 @@ export function ProductsScreen() {
   };
 
   useEffect(() => {
+    if (ctxProducts && ctxProducts.length > 0) {
+      setProducts(ctxProducts as any);
+      return;
+    }
     void loadInitial();
-    
   }, []);
+  
+  useEffect(() => {
+    if (ctxProducts && ctxProducts.length > 0) {
+      setProducts(ctxProducts as any);
+    }
+  }, [ctxProducts]);
 
    const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -198,17 +221,22 @@ export function ProductsScreen() {
       </View>
 
       {/* BODY */}
-      {loading && (
+      {(loading || ctxLoading) && (
         <View style={{ paddingTop: 24 }}>
           <ActivityIndicator />
         </View>
       )}
 
-      {errorMsg && !loading && (
+      {(errorMsg || ctxError) && !(loading || ctxLoading) && (
         <View style={{ padding: 20 }}>
-          <Text style={{ color: colors.muted, marginBottom: 10 }}>{errorMsg}</Text>
+          <Text style={{ color: colors.muted, marginBottom: 10 }}>
+            {errorMsg || ctxError}
+          </Text>
           <TouchableOpacity
-            onPress={loadInitial}
+            onPress={() => {
+              void loadCtxProducts();
+              void loadInitial();
+            }}
             style={{
               backgroundColor: colors.primary,
               paddingHorizontal: 16,
@@ -222,7 +250,7 @@ export function ProductsScreen() {
         </View>
       )}
 
-      {!loading && !errorMsg && (
+      {!loading && !ctxLoading && !errorMsg && !ctxError && (
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: 20,
