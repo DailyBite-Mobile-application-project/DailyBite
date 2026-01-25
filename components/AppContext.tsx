@@ -380,6 +380,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void loadDietPlans();
   }, [accessToken]);
 
+  useEffect(() => {
+    void loadProducts();
+  }, []);
+
   return (
     <AppContextInternal.Provider
       value={{

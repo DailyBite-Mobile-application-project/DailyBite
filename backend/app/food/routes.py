@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, status
 from app.db.database import get_database
+from app.food.services import search_food, product_from_usda_record, translate_query
 
 router = APIRouter()
 
@@ -43,3 +44,43 @@ async def search_products(
         results.append(serialize_product(item))
 
     return results
+
+
+@router.post("/import-defaults", status_code=status.HTTP_200_OK)
+async def import_default_products():
+    db = get_database()
+    default_names = [
+        "jajko",
+        "kurczak",
+        "ryż",
+        "ryż brązowy",
+        "banan",
+        "jabłko",
+        "ziemniaki",
+        "mleko",
+        "ser",
+        "chleb",
+        "wołowina",
+        "wieprzowina",
+    ]
+
+    imported = 0
+    for name in default_names:
+        query = translate_query(name)
+        record = search_food(query=query, page_size=10)
+        if not record:
+            continue
+
+        try:
+            produkt = product_from_usda_record(original_name=name, record=record)
+        except Exception:
+            continue
+
+        await db.products.update_one(
+            {"nazwa": produkt.nazwa},
+            {"$set": produkt.to_dict()},
+            upsert=True,
+        )
+        imported += 1
+
+    return {"imported": imported}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ type Ingredient = { productId: string; amount: number };
 type Nutrition = { calories: number; protein: number; carbs: number; fats: number };
 
 export function DishEditorScreen() {
-  const { navigate, selectedDishId, dishes, setDishes, products, accessToken } = useApp();
+  const { navigate, selectedDishId, dishes, setDishes, products, accessToken, loadProducts, loadDishes } = useApp();
   const t = useT();
   const colors = useTheme();
 
@@ -34,6 +34,12 @@ export function DishEditorScreen() {
   );
 
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+
+  useEffect(() => {
+    if (products.length === 0) {
+      void loadProducts();
+    }
+  }, [products.length]);
 
   const nutrition = useMemo<Nutrition>(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
@@ -162,6 +168,7 @@ export function DishEditorScreen() {
         } else {
           await createDish(payload as any, accessToken);
         }
+        await loadDishes();
       } catch (e: any) {
         Alert.alert(t('common.error'), e?.message ?? t('err.generic'));
       }

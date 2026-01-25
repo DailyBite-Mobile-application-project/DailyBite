@@ -12,7 +12,7 @@ import { useApp } from './AppContext';
 import { BottomNav } from './BottomNav';
 import { useT } from './i18n';
 import { useTheme } from './theme';
-import { fetchProducts, type Product as ApiProduct } from './api';
+import { fetchProducts, importDefaultProducts, type Product as ApiProduct } from './api';
 
 type ProductCategory = 'All' | 'Protein' | 'Grains' | 'Vegetables' | 'Fats' | 'Dairy';
 
@@ -63,7 +63,15 @@ export function ProductsScreen() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const list = await fetchProducts();
+      let list = await fetchProducts();
+      if (list.length === 0) {
+        try {
+          await importDefaultProducts();
+          list = await fetchProducts();
+        } catch {
+          // jeśli import się nie uda, zostawiamy pustą listę
+        }
+      }
       const normalized = list.map((p: any) => ({
         ...p,
         fats: Number(p?.fats ?? p?.fat ?? 0),

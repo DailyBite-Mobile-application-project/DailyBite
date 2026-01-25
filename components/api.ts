@@ -147,6 +147,12 @@ export async function fetchProducts(): Promise<Product[]> {
   return raw.map(mapApiProduct).filter((p) => p.id && p.name);
 }
 
+export async function importDefaultProducts() {
+  return request<{ imported: number }>(`${BASE_URL}/api/food/import-defaults`, {
+    method: "POST",
+  });
+}
+
 export async function searchProducts(q: string): Promise<Product[]> {
   const raw = await request<ApiProductRaw[]>(
     `${BASE_URL}/api/food/search?q=${encodeURIComponent(q)}`,

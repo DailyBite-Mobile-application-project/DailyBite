@@ -108,7 +108,13 @@ export function LoginScreen() {
         me = { email: safeEmail, name: name.trim() || '' };
       }
 
-      login({ ...tokens, user: me } as any);
+      const mergedUser = {
+        ...(tokens as any).user,
+        ...me,
+        name: (me?.name && String(me.name).trim()) || (tokens as any).user?.name || name.trim() || ''
+      };
+
+      login({ ...tokens, user: mergedUser } as any);
     } catch (err: unknown) {
       setErrors(prev => ({ ...prev, email: normalizeErrorMessage(err) }));
     } finally {
