@@ -131,7 +131,7 @@ export function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: brandBg }}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
@@ -143,7 +143,7 @@ export function LoginScreen() {
             backgroundColor: brandBg,
             justifyContent: 'center',
             paddingHorizontal: 20,
-            paddingBottom: 20,
+            paddingBottom: 32,
             paddingTop: 20 + topInset
           }}
         >
