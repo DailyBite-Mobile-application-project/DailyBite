@@ -43,17 +43,13 @@ async def register(payload: UserCreate):
             detail="Email already registered",
         )
 
-    # WAŻNE: create_user musi przyjąć name i go zapisać
-    # Zmień create_user(...) w services, jeśli jeszcze nie przyjmuje name.
     user = await create_user(payload.email, payload.password, payload.name)
-
-    # user powinien być dokumentem z DB (np. {"_id": ..., "email": ..., "name": ..., ...})
-    return to_user_response(user)
+    return {"id": user["id"], "email": user["email"], "name": user["name"]}
 
 
 @router.post("/token", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def login(payload: UserLogin):
-    user = await authenticate_user(payload.email, payload.password)
+    user = await authenticate_user(payload.email, payload.password, payload.name)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -105,10 +101,8 @@ async def refresh_token(payload: RefreshTokenRequest):
             detail="Invalid or revoked token",
         )
 
-    # Pobieramy usera, żeby zwrócić user.name/email w odpowiedzi
     user = await db.users.find_one({"_id": user_id})
     if not user:
-        # w razie gdyby _id było ObjectId a user_id string:
         user = await db.users.find_one({"id": user_id})
 
     if not user:
