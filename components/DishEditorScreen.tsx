@@ -192,7 +192,7 @@ export function DishEditorScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <View
@@ -243,7 +243,11 @@ export function DishEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.bg }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Section title={t('dishEditor.section.basic')} colors={colors}>
           <Text style={{ color: colors.muted, marginBottom: 6 }}>{t('dishEditor.nameLabel')}</Text>
           <TextInput

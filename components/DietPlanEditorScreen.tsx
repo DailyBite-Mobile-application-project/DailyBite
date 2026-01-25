@@ -299,7 +299,7 @@ export function DietPlanEditorScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <View style={styles.header}>
@@ -318,6 +318,7 @@ export function DietPlanEditorScreen() {
       </View>
 
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -487,6 +488,10 @@ function makeStyles(colors: ReturnType<typeof useTheme>) {
     scrollContent: {
       padding: 20,
       paddingBottom: 80
+    } as ViewStyle,
+    scroll: {
+      flex: 1,
+      backgroundColor: colors.bg
     } as ViewStyle,
 
     label: {

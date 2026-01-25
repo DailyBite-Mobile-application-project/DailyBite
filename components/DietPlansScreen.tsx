@@ -99,13 +99,14 @@ export function DietPlansScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
           <View
             style={{
               backgroundColor: colors.card,
@@ -208,6 +209,7 @@ export function DietPlansScreen() {
 
       {/* PLANS LIST */}
       <ScrollView
+        style={{ flex: 1, backgroundColor: colors.bg }}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingBottom: 220,
@@ -299,11 +301,11 @@ export function DietPlansScreen() {
       >
         <Plus size={30} color="white" />
       </TouchableOpacity>
-
-          <BottomNav active="diet-plans" />
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
+      <BottomNav active="diet-plans" />
+    </View>
   );
 }
 
