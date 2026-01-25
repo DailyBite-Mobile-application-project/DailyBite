@@ -241,22 +241,26 @@ function normalizeDietPlanFromApi(p: any): DietPlan {
 }
 
 function normalizeUser(userLike: any): User {
-  const id = String(userLike?.id ?? userLike?._id ?? '');
-  const email = String(userLike?.email ?? '');
+  const raw = userLike?.user ?? userLike ?? {};
+  const id = String(raw?.id ?? raw?._id ?? '');
+  const email = String(raw?.email ?? userLike?.email ?? '');
 
-  const firstName = String(userLike?.first_name ?? userLike?.firstName ?? '');
-  const lastName = String(userLike?.last_name ?? userLike?.lastName ?? '');
+  const firstName = String(raw?.first_name ?? raw?.firstName ?? '');
+  const lastName = String(raw?.last_name ?? raw?.lastName ?? '');
 
   const fullName = `${firstName} ${lastName}`.trim();
+
+  const fallbackName =
+    (email && email.includes('@') ? email.split('@')[0] : '') || 'User';
 
   return {
     id,
     email,
     firstName,
     lastName,
-    name: fullName || String(userLike?.name ?? ''), 
-    goal: String(userLike?.goal ?? ''),
-    targetCalories: Number(userLike?.targetCalories ?? 0),
+    name: fullName || String(raw?.name ?? '') || fallbackName,
+    goal: String(raw?.goal ?? ''),
+    targetCalories: Number(raw?.targetCalories ?? 0),
   };
 }
 

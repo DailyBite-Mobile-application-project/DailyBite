@@ -18,6 +18,17 @@ def serialize_product(item: dict) -> dict:
     }
 
 
+def _default_products() -> list[dict]:
+    return [
+        {"id": "local-egg", "nazwa": "Jajko", "kategoria": "Białko", "kalorie": 143, "bialko": 13, "weglowodany": 1, "tluszcz": 10, "waga": 100},
+        {"id": "local-chicken", "nazwa": "Kurczak (pierś)", "kategoria": "Białko", "kalorie": 165, "bialko": 31, "weglowodany": 0, "tluszcz": 4, "waga": 100},
+        {"id": "local-rice", "nazwa": "Ryż", "kategoria": "Zboża", "kalorie": 130, "bialko": 2.7, "weglowodany": 28, "tluszcz": 0.3, "waga": 100},
+        {"id": "local-potato", "nazwa": "Ziemniaki", "kategoria": "Warzywa", "kalorie": 77, "bialko": 2, "weglowodany": 17, "tluszcz": 0.1, "waga": 100},
+        {"id": "local-milk", "nazwa": "Mleko 2%", "kategoria": "Nabiał", "kalorie": 50, "bialko": 3.4, "weglowodany": 5, "tluszcz": 2, "waga": 100},
+        {"id": "local-banana", "nazwa": "Banan", "kategoria": "Owoce", "kalorie": 89, "bialko": 1.1, "weglowodany": 23, "tluszcz": 0.3, "waga": 100},
+    ]
+
+
 @router.get("/", status_code=status.HTTP_200_OK)
 async def list_products(limit: int = Query(50, ge=1, le=200)):
     db = get_database()
@@ -27,6 +38,9 @@ async def list_products(limit: int = Query(50, ge=1, le=200)):
 
     async for item in cursor:
         products.append(serialize_product(item))
+
+    if not products:
+        return _default_products()
 
     return products
 
