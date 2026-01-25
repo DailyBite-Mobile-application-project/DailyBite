@@ -1,5 +1,4 @@
-// SettingsScreen.tsx
-import React from 'react';
+
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import {
   ArrowLeft,
@@ -24,6 +23,11 @@ export function SettingsScreen() {
   const t = useT();
   const colors = useTheme();
 
+  const primaryText = (colors as any).primaryText ?? '#ffffff';
+  const primarySoft = (colors as any).primarySoft ?? 'rgba(0,192,86,0.16)';
+  const danger = (colors as any).danger ?? '#dc2626';
+  const dangerSoft = (colors as any).dangerSoft ?? 'rgba(220,38,38,0.12)';
+
   const brandHeaderBg = theme === 'dark' ? '#0b3d2a' : colors.primary;
 
   const showWip = (label: string) => {
@@ -34,7 +38,6 @@ export function SettingsScreen() {
     );
   };
 
-  // i18n: używamy kluczy, które masz w słowniku
   const settingsSections = [
     {
       title: t('settings.profile'),
@@ -108,9 +111,7 @@ export function SettingsScreen() {
               <Text style={{ fontSize: 22, fontWeight: '700', color: 'white' }}>
                 {user?.name ?? ''}
               </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.85)' }}>
-                {(user as any)?.email ?? ''}
-              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)' }}>{(user as any)?.email ?? ''}</Text>
             </View>
           </View>
         </View>
@@ -147,16 +148,18 @@ export function SettingsScreen() {
             <OptionCard
               active={theme === 'light'}
               onPress={() => setTheme('light')}
-              icon={<Sun size={18} color={theme === 'light' ? colors.primaryText : colors.text} />}
+              icon={<Sun size={18} color={theme === 'light' ? primaryText : colors.text} />}
               label={t('settings.theme.light')}
               colors={colors}
+              primaryText={primaryText}
             />
             <OptionCard
               active={theme === 'dark'}
               onPress={() => setTheme('dark')}
-              icon={<Moon size={18} color={theme === 'dark' ? colors.primaryText : colors.text} />}
+              icon={<Moon size={18} color={theme === 'dark' ? primaryText : colors.text} />}
               label={t('settings.theme.dark')}
               colors={colors}
+              primaryText={primaryText}
             />
           </View>
 
@@ -168,21 +171,23 @@ export function SettingsScreen() {
             <OptionCard
               active={language === 'pl'}
               onPress={() => setLanguage('pl')}
-              icon={<Languages size={18} color={language === 'pl' ? colors.primaryText : colors.text} />}
+              icon={<Languages size={18} color={language === 'pl' ? primaryText : colors.text} />}
               label="PL"
               colors={colors}
+              primaryText={primaryText}
             />
             <OptionCard
               active={language === 'en'}
               onPress={() => setLanguage('en')}
-              icon={<Languages size={18} color={language === 'en' ? colors.primaryText : colors.text} />}
+              icon={<Languages size={18} color={language === 'en' ? primaryText : colors.text} />}
               label="EN"
               colors={colors}
+              primaryText={primaryText}
             />
           </View>
         </View>
 
-        {/* SETTINGS LIST (STARE SEKCJE) */}
+        {/* SETTINGS LIST */}
         <View style={{ paddingHorizontal: 20 }}>
           {settingsSections.map((section, i) => (
             <View key={i} style={{ marginBottom: 20 }}>
@@ -219,7 +224,7 @@ export function SettingsScreen() {
                         style={{
                           width: 44,
                           height: 44,
-                          backgroundColor: colors.primarySoft ?? 'rgba(0,192,86,0.16)',
+                          backgroundColor: primarySoft,
                           borderRadius: 8,
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -267,10 +272,8 @@ export function SettingsScreen() {
               borderColor: theme === 'dark' ? colors.border : 'transparent'
             }}
           >
-            <LogOut size={20} color={colors.danger ?? '#dc2626'} />
-            <Text style={{ color: colors.danger ?? '#dc2626', fontWeight: '700', fontSize: 16 }}>
-              {t('settings.logout')}
-            </Text>
+            <LogOut size={20} color={danger} />
+            <Text style={{ color: danger, fontWeight: '700', fontSize: 16 }}>{t('settings.logout')}</Text>
           </TouchableOpacity>
 
           <Text style={{ textAlign: 'center', color: colors.muted, marginVertical: 20 }}>
@@ -289,13 +292,15 @@ function OptionCard({
   onPress,
   icon,
   label,
-  colors
+  colors,
+  primaryText
 }: {
   active: boolean;
   onPress: () => void;
   icon: React.ReactNode;
   label: string;
-  colors: any;
+  colors: ReturnType<typeof useTheme>;
+  primaryText: string;
 }) {
   return (
     <TouchableOpacity
@@ -314,13 +319,7 @@ function OptionCard({
       }}
     >
       {icon}
-      <Text
-        style={{
-          marginLeft: 8,
-          color: active ? colors.primaryText : colors.text,
-          fontWeight: '700'
-        }}
-      >
+      <Text style={{ marginLeft: 8, color: active ? primaryText : colors.text, fontWeight: '700' }}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -336,7 +335,7 @@ function Stat({
   label: string;
   value: string;
   divider?: boolean;
-  colors: any;
+  colors: ReturnType<typeof useTheme>;
 }) {
   return (
     <View

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import {
   Calendar,
@@ -14,15 +15,38 @@ import { BottomNav } from './BottomNav';
 import { useT } from './i18n';
 import { useTheme } from './theme';
 
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+function localISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function MainScreen() {
-  const { user, navigate, scheduledMeals, dishes, theme } = useApp();
+  const { user, navigate, scheduledMeals, dishes, theme, products } = useApp();
   const t = useT();
   const colors = useTheme();
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayMeals = scheduledMeals.filter(meal => meal.date === today);
+  const today = localISODate();
 
-  const mealTypeLabel = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+  const todayMeals = useMemo(
+    () => scheduledMeals.filter(meal => meal.date === today),
+    [scheduledMeals, today]
+  );
+
+  // Typujemy Mapy -> .get() zwraca Dish | undefined, Product | undefined
+  const dishById = useMemo(() => {
+    return new Map<string, (typeof dishes)[number]>(dishes.map(d => [d.id, d]));
+  }, [dishes]);
+
+  const productById = useMemo(() => {
+    return new Map<string, (typeof products)[number]>(products.map(p => [p.id, p]));
+  }, [products]);
+
+  const mealTypeLabel = (type: MealType) => {
     switch (type) {
       case 'breakfast':
         return t('meal.breakfast');
@@ -32,10 +56,41 @@ export function MainScreen() {
         return t('meal.dinner');
       case 'snack':
         return t('meal.snack');
-      default:
-        return type;
     }
   };
+
+  // kcal Today: licz z dish.products * product.calories
+  const kcalToday = useMemo(() => {
+    let total = 0;
+
+    for (const meal of todayMeals) {
+      const dish = dishById.get(meal.dishId);
+      if (!dish) continue;
+
+      // U Ciebie Dish nie ma nutritionTotal, więc nie dotykamy tego pola wcale.
+      for (const ing of dish.products) {
+        const product = productById.get(ing.productId);
+        if (!product) continue;
+
+        const grams = Number(ing.amount);
+        if (!Number.isFinite(grams) || grams <= 0) continue;
+
+        total += (Number(product.calories) * grams) / 100;
+      }
+    }
+
+    return Math.round(total);
+  }, [todayMeals, dishById, productById]);
+
+  const targetKcal = useMemo(() => {
+    const v = Number(user?.targetCalories);
+    return Number.isFinite(v) && v > 0 ? Math.round(v) : null;
+  }, [user]);
+
+  const displayName =
+    (user?.name && String(user.name).trim()) ||
+    (user?.email && String(user.email).trim()) ||
+    '';
 
   const quickActions = [
     { icon: Book, label: t('main.action.dietPlans'), screen: 'diet-plans' as const, bg: '#5038d8ff' },
@@ -44,38 +99,22 @@ export function MainScreen() {
     { icon: Calendar, label: t('main.action.schedule'), screen: 'schedule' as const, bg: '#23aae9ff' }
   ];
 
-  // zachowujemy "brand" tło, ale zależne od theme
   const brandHeaderBg = theme === 'dark' ? '#0b3d2a' : '#00c056ff';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* HEADER */}
-        <View
-          style={{
-            backgroundColor: brandHeaderBg,
-            padding: 20,
-            paddingBottom: 32
-          }}
-        >
+        <View style={{ backgroundColor: brandHeaderBg, padding: 20, paddingBottom: 32 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
             <View>
-              <Text style={{ color: 'rgba(255,255,255,0.85)' }}>
-                {t('main.welcomeBack')}
-              </Text>
-              <Text style={{ fontSize: 26, fontWeight: '700', color: 'white' }}>
-                {user?.name ?? ''}
-              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('main.welcomeBack')}</Text>
+              <Text style={{ fontSize: 26, fontWeight: '700', color: 'white' }}>{displayName}</Text>
             </View>
 
             <TouchableOpacity
               onPress={() => navigate('settings')}
-              style={{
-                width: 44,
-                height: 44,
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <Settings size={22} color="white" />
             </TouchableOpacity>
@@ -86,21 +125,21 @@ export function MainScreen() {
             <StatCard
               icon={Flame}
               label={t('main.kcalToday')}
-              value="1,847"
+              value={String(kcalToday)}
               accent="#fb923c"
               theme={theme}
             />
             <StatCard
               icon={Target}
               label={t('main.target')}
-              value="2,000"
+              value={targetKcal != null ? String(targetKcal) : '—'}
               accent="#38bdf8"
               theme={theme}
             />
             <StatCard
               icon={TrendingDown}
               label={t('main.progress')}
-              value="-2.3kg"
+              value="—"
               accent="#4ade80"
               theme={theme}
             />
@@ -145,13 +184,7 @@ export function MainScreen() {
                   <action.icon size={22} color="white" />
                 </View>
 
-                <Text
-                  style={{
-                    fontSize: 16,
-                    color: colors.text,
-                    textAlign: 'center'
-                  }}
-                >
+                <Text style={{ fontSize: 16, color: colors.text, textAlign: 'center' }}>
                   {action.label}
                 </Text>
               </TouchableOpacity>
@@ -167,9 +200,7 @@ export function MainScreen() {
             </Text>
 
             <TouchableOpacity onPress={() => navigate('schedule')}>
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                {t('main.viewAll')}
-              </Text>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('main.viewAll')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -188,18 +219,11 @@ export function MainScreen() {
               }}
             >
               <Calendar size={40} color={colors.muted} style={{ marginBottom: 10 }} />
-              <Text style={{ color: colors.muted, marginBottom: 12 }}>
-                {t('main.noMealsToday')}
-              </Text>
+              <Text style={{ color: colors.muted, marginBottom: 12 }}>{t('main.noMealsToday')}</Text>
 
               <TouchableOpacity
                 onPress={() => navigate('schedule')}
-                style={{
-                  backgroundColor: colors.primary,
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: 12
-                }}
+                style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
               >
                 <Text style={{ color: colors.primaryText, fontWeight: '600' }}>
                   {t('main.scheduleMeals')}
@@ -209,7 +233,7 @@ export function MainScreen() {
           ) : (
             <View style={{ gap: 10 }}>
               {todayMeals.map(meal => {
-                const dish = dishes.find(d => d.id === meal.dishId);
+                const dish = dishById.get(meal.dishId);
 
                 return (
                   <View
@@ -247,7 +271,7 @@ export function MainScreen() {
                       </Text>
 
                       <Text style={{ color: colors.muted }}>
-                        {meal.time} • {mealTypeLabel(meal.type)}
+                        {meal.time} • {mealTypeLabel(meal.type as MealType)}
                       </Text>
                     </View>
                   </View>

@@ -23,10 +23,9 @@ export function DietPlansScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DietCategory>('All');
 
-  // UWAGA: wartości EN zostają, bo plan.category jest w EN i filtruje po tych wartościach
   const categories: DietCategory[] = ['All', 'Balanced', 'Weight Loss', 'Vegan', 'Keto'];
 
-  const categoryLabel = (cat: DietCategory) => {
+  const categoryLabel = (cat: string) => {
     switch (cat) {
       case 'All':
         return t('dietCat.all');
@@ -38,16 +37,19 @@ export function DietPlansScreen() {
         return t('dietCat.vegan');
       case 'Keto':
         return t('dietCat.keto');
+      default:
+        
+        return cat;
     }
   };
 
   const filteredPlans = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return dietPlans.filter(plan => {
+    return dietPlans.filter((plan: any) => {
       const matchesSearch =
-        plan.name.toLowerCase().includes(q) ||
-        plan.description.toLowerCase().includes(q);
+        (plan.name ?? '').toLowerCase().includes(q) ||
+        (plan.description ?? '').toLowerCase().includes(q);
 
       const matchesCategory =
         selectedCategory === 'All' || plan.category === selectedCategory;
@@ -55,6 +57,25 @@ export function DietPlansScreen() {
       return matchesSearch && matchesCategory;
     });
   }, [dietPlans, searchQuery, selectedCategory]);
+
+  const fallbackImage =
+    'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
+
+  const formatDuration = (plan: any) => {
+   
+    if (plan?.durationDays != null) {
+      return `${plan.durationDays} ${t('common.days')}`;
+    }
+    return String(plan?.duration ?? '');
+  };
+
+  const planCalories = (plan: any) => {
+   
+    const fromNutrition = plan?.nutritionTotal?.calories;
+    if (typeof fromNutrition === 'number') return Math.round(fromNutrition);
+    if (typeof plan?.calories === 'number') return Math.round(plan.calories);
+    return 0;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -170,7 +191,7 @@ export function DietPlansScreen() {
           gap: 16
         }}
       >
-        {filteredPlans.map(plan => (
+        {filteredPlans.map((plan: any) => (
           <TouchableOpacity
             key={plan.id}
             onPress={() => openDietDetail(plan.id)}
@@ -186,11 +207,7 @@ export function DietPlansScreen() {
             {/* IMAGE */}
             <View style={{ height: 140 }}>
               <Image
-                source={{
-                  uri: plan.image
-                    ? plan.image
-                    : 'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw'
-                }}
+                source={{ uri: plan.image ? plan.image : fallbackImage }}
                 resizeMode="cover"
                 style={{ width: '100%', height: '100%' }}
               />
@@ -206,7 +223,7 @@ export function DietPlansScreen() {
                 }}
               >
                 <Text style={{ color: colors.primary, fontWeight: '500' }}>
-                  {categoryLabel((plan.category as DietCategory) ?? 'All')}
+                  {categoryLabel(plan.category ?? 'All')}
                 </Text>
               </View>
             </View>
@@ -222,8 +239,8 @@ export function DietPlansScreen() {
               </Text>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Stat icon={Clock} value={plan.duration.replace('common.days', t('common.days'))} />
-                <Stat icon={Flame} value={`${plan.calories} ${t('common.kcal')}`} />
+                <Stat icon={Clock} value={formatDuration(plan)} />
+                <Stat icon={Flame} value={`${planCalories(plan)} ${t('common.kcal')}`} />
               </View>
             </View>
           </TouchableOpacity>

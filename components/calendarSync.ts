@@ -5,8 +5,8 @@ export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export type ScheduledMeal = {
   id: string;
-  date: string;     
-  time: string;     
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
   dishId: string;
   type: MealType;
 };
@@ -25,9 +25,13 @@ type SyncResult = {
 const APP_EVENT_MARKER = 'DailyBites';
 
 function parseMealDateTime(meal: ScheduledMeal): Date | null {
+  const [y, m, d] = meal.date.split('-').map(Number);
+  const [hh, mm] = meal.time.split(':').map(Number);
 
-  const iso = `${meal.date}T${meal.time}:00`;
-  const dt = new Date(iso);
+  if (!y || !m || !d) return null;
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+
+  const dt = new Date(y, m - 1, d, hh, mm, 0);
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
@@ -65,7 +69,6 @@ async function getWritableSource() {
   if (google?.source) return google.source;
 
   if (writable[0]?.source) return writable[0].source;
-
   if (calendars[0]?.source) return calendars[0].source;
 
   throw new Error('NO_CALENDAR_SOURCE');
@@ -96,16 +99,17 @@ export async function getOrCreateDailyBitesCalendarId(): Promise<string> {
 }
 
 async function removeExistingEventsInRange(calendarId: string, start: Date, end: Date): Promise<number> {
-
   const events = await Calendar.getEventsAsync([calendarId], start, end);
   let removed = 0;
 
   for (const ev of events) {
+    const notes = ev.notes ?? '';
+    if (!notes.includes(APP_EVENT_MARKER) && !notes.includes('MealId:')) continue;
+
     try {
       await Calendar.deleteEventAsync(ev.id);
       removed++;
     } catch {
-
     }
   }
 
@@ -125,17 +129,11 @@ export async function syncMealsToSystemCalendar(
   meals: ScheduledMeal[],
   dishes: Dish[],
   opts?: {
-
     durationMinutes?: number;
-
     clearExistingInRange?: boolean;
-
-    titlePrefix?: string; 
-
+    titlePrefix?: string;
     rangeStart?: Date;
-
     rangeEnd?: Date;
-
     calendarIdOverride?: string;
   }
 ): Promise<SyncResult> {
@@ -144,7 +142,7 @@ export async function syncMealsToSystemCalendar(
   const calendarId = opts?.calendarIdOverride ?? await getOrCreateDailyBitesCalendarId();
 
   const duration = opts?.durationMinutes ?? 30;
-  const clearExisting = opts?.clearExistingInRange ?? true;
+  const clearExisting = opts?.clearExistingInRange !== false; 
   const prefix = opts?.titlePrefix ?? '🍽';
 
   const dateTimes = meals
@@ -157,6 +155,7 @@ export async function syncMealsToSystemCalendar(
     : dateTimes[0]
       ? addMinutes(dateTimes[0], -24 * 60)
       : null;
+
   const rangeEnd = opts?.rangeEnd
     ? opts.rangeEnd
     : dateTimes[dateTimes.length - 1]
@@ -172,12 +171,15 @@ export async function syncMealsToSystemCalendar(
 
   const existingByMealId = new Map<string, Calendar.Event>();
   const existingByKey = new Set<string>();
+
   if (rangeStart && rangeEnd) {
     const existing = await Calendar.getEventsAsync([calendarId], rangeStart, rangeEnd);
+
     for (const ev of existing) {
       const mealId = parseMealIdFromNotes(ev.notes);
       if (mealId) {
         existingByMealId.set(mealId, ev);
+
         const startValue = ev.startDate as any;
         const startDate = startValue ? new Date(startValue) : null;
         if (startDate && !Number.isNaN(startDate.getTime())) {
@@ -196,14 +198,17 @@ export async function syncMealsToSystemCalendar(
     }
   }
 
+  
   if (clearExisting && meals.length > 0) {
     const desiredIds = new Set(meals.map(m => m.id));
+
     for (const [mealId, ev] of existingByMealId.entries()) {
       if (!desiredIds.has(mealId)) {
         try {
           await Calendar.deleteEventAsync(ev.id);
           removed++;
         } catch {
+          
         }
       }
     }
@@ -223,6 +228,7 @@ export async function syncMealsToSystemCalendar(
       try {
         const existingStart = existing.startDate ? new Date(existing.startDate as any) : null;
         const existingEnd = existing.endDate ? new Date(existing.endDate as any) : null;
+
         const needsUpdate =
           !existingStart ||
           !existingEnd ||
@@ -241,6 +247,7 @@ export async function syncMealsToSystemCalendar(
           });
         }
       } catch {
+        
       }
       continue;
     }
@@ -256,11 +263,10 @@ export async function syncMealsToSystemCalendar(
         startDate: start,
         endDate: end,
         notes: `${APP_EVENT_MARKER}\nMealId: ${meal.id}\nType: ${meal.type}\nDish: ${dishName}`,
-
       });
       created++;
     } catch {
-
+      
     }
   }
 

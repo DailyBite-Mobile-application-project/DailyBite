@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+import { fetchProducts } from './api'; 
 export type Screen =
   | 'login'
   | 'main'
@@ -18,7 +19,7 @@ export type DietPlan = {
   id: string;
   name: string;
   description: string;
-  duration: string;
+  duration: string; 
   category: string;
   image?: string | null;
   dishIds: string[];
@@ -31,7 +32,7 @@ export type Product = {
   calories: number;
   protein: number;
   carbs: number;
-  fats: number;
+  fats: number; 
   category: string;
 };
 
@@ -54,15 +55,18 @@ export type ScheduledMeal = {
 
 export type User = {
   id: string;
-  name: string;
+  name: string; 
   email: string;
   goal: string;
   targetCalories: number;
+
+  firstName?: string;
+  lastName?: string;
 };
 
 type AppContextType = {
   user: User | null;
-  login: (user: any) => void;
+  login: (userLike: any) => void;
   logout: () => void;
 
   currentScreen: Screen;
@@ -79,6 +83,11 @@ type AppContextType = {
   setDietPlans: (plans: DietPlan[]) => void;
 
   products: Product[];
+  setProducts: (products: Product[]) => void;
+  loadProducts: () => Promise<void>;
+  productsLoading: boolean;
+  productsError: string | null;
+
   dishes: Dish[];
   setDishes: (dishes: Dish[]) => void;
 
@@ -108,39 +117,7 @@ const mockDietPlans: DietPlan[] = [
     image: null,
     dishIds: [],
     calories: 0
-  },
-  {
-    id: 'd2',
-    name: 'Plan number 2',
-    description: 'Description for plan number 2.',
-    duration: '21 days',
-    category: 'Weight Loss',
-    image: null,
-    dishIds: [],
-    calories: 0
-  },
-  {
-    id: 'd3',
-    name: 'Plan number 3',
-    description: 'Description for plan number 3.',
-    duration: '30 days',
-    category: 'Vegan',
-    image: null,
-    dishIds: [],
-    calories: 0
   }
-];
-
-const mockProducts: Product[] = [
-  { id: 'p1', name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fats: 3.6, category: 'Protein' },
-  { id: 'p2', name: 'Salmon', calories: 208, protein: 20, carbs: 0, fats: 13, category: 'Protein' },
-  { id: 'p3', name: 'Rice', calories: 130, protein: 2.7, carbs: 28, fats: 0.3, category: 'Grains' },
-  { id: 'p4', name: 'Oats', calories: 389, protein: 17, carbs: 66, fats: 7, category: 'Grains' },
-  { id: 'p5', name: 'Broccoli', calories: 55, protein: 3.7, carbs: 11, fats: 0.6, category: 'Vegetables' },
-  { id: 'p6', name: 'Avocado', calories: 160, protein: 2, carbs: 9, fats: 15, category: 'Fats' },
-  { id: 'p7', name: 'Olive Oil', calories: 884, protein: 0, carbs: 0, fats: 100, category: 'Fats' },
-  { id: 'p8', name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 3.6, fats: 0.4, category: 'Dairy' },
-  { id: 'p9', name: 'Cheddar Cheese', calories: 403, protein: 25, carbs: 1.3, fats: 33, category: 'Dairy' }
 ];
 
 const mockDishes: Dish[] = [
@@ -158,6 +135,43 @@ const mockDishes: Dish[] = [
   }
 ];
 
+function normalizeProduct(p: any): Product | null {
+  const id = String(p?._id ?? p?.id ?? '');
+  const name = String(p?.nazwa ?? p?.name ?? '');
+
+  if (!id || !name) return null;
+
+  return {
+    id,
+    name,
+    category: String(p?.kategoria ?? p?.category ?? 'Inne'),
+    calories: Number(p?.kalorie ?? p?.calories ?? 0),
+    protein: Number(p?.bialko ?? p?.protein ?? 0),
+    carbs: Number(p?.weglowodany ?? p?.carbs ?? 0),
+    fats: Number(p?.tluszcz ?? p?.fat ?? p?.fats ?? 0),
+  };
+}
+
+function normalizeUser(userLike: any): User {
+  const id = String(userLike?.id ?? userLike?._id ?? '');
+  const email = String(userLike?.email ?? '');
+
+  const firstName = String(userLike?.first_name ?? userLike?.firstName ?? '');
+  const lastName = String(userLike?.last_name ?? userLike?.lastName ?? '');
+
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  return {
+    id,
+    email,
+    firstName,
+    lastName,
+    name: fullName || String(userLike?.name ?? ''), 
+    goal: String(userLike?.goal ?? ''),
+    targetCalories: Number(userLike?.targetCalories ?? 0),
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
@@ -167,12 +181,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [dietPlans, setDietPlans] = useState<DietPlan[]>(mockDietPlans);
   const [dishes, setDishes] = useState<Dish[]>(mockDishes);
-  const [products] = useState<Product[]>(mockProducts);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
   const [scheduledMeals, setScheduledMeals] = useState<ScheduledMeal[]>([]);
-
   const [language, setLanguage] = useState<Language>('pl');
-
   const [theme, setTheme] = useState<ThemeMode>('light');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
 
@@ -204,7 +219,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const login = (userLike: any) => {
-    setUser(userLike);
+    const normalized = normalizeUser(userLike);
+    setUser(normalized);
     navigate('main');
   };
 
@@ -213,30 +229,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigate('login');
   };
 
+  const loadProducts = async () => {
+    setProductsLoading(true);
+    setProductsError(null);
+
+    try {
+
+      const raw = await fetchProducts();
+      const normalized = Array.isArray(raw)
+        ? raw
+            .map((p: any) => {
+              if (p && typeof p.id === 'string' && typeof p.name === 'string' && 'fats' in p) {
+                return p as Product;
+              }
+              return normalizeProduct(p);
+            })
+            .filter(Boolean) as Product[]
+        : [];
+
+      setProducts(normalized);
+    } catch (e: any) {
+      setProductsError(e?.message ?? 'Nie udało się pobrać produktów');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   return (
     <AppContextInternal.Provider
       value={{
         user,
         login,
         logout,
+
         currentScreen,
         navigate,
+
         selectedDietId,
         openDietDetail,
         openDietPlanEditor,
+
         selectedDishId,
         openDishEditor,
+
         dietPlans,
         setDietPlans,
+
         products,
+        setProducts,
+        loadProducts,
+        productsLoading,
+        productsError,
+
         dishes,
         setDishes,
+
         scheduledMeals,
         setScheduledMeals,
+
         language,
         setLanguage,
+
         theme,
         setTheme,
+
         selectedCalendarId,
         setSelectedCalendarId
       }}

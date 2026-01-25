@@ -15,6 +15,9 @@ import { useApp } from './AppContext';
 import { useT } from './i18n';
 import { useTheme } from './theme';
 
+type Ingredient = { productId: string; amount: number };
+type Nutrition = { calories: number; protein: number; carbs: number; fats: number };
+
 export function DishEditorScreen() {
   const { navigate, selectedDishId, dishes, setDishes, products } = useApp();
   const t = useT();
@@ -25,23 +28,28 @@ export function DishEditorScreen() {
   const [dishName, setDishName] = useState(existingDish?.name ?? '');
   const [instructions, setInstructions] = useState(existingDish?.instructions ?? '');
   const [prepTime, setPrepTime] = useState<number>(existingDish?.prepTime ?? 30);
-  const [ingredients, setIngredients] = useState<{ productId: string; amount: number }[]>(
+  const [ingredients, setIngredients] = useState<Ingredient[]>(
     existingDish?.products ?? []
   );
 
-  const nutrition = useMemo(() => {
+  const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+
+  const nutrition = useMemo<Nutrition>(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
 
-    ingredients.forEach(sp => {
-      const product = products.find(p => p.id === sp.productId);
-      if (!product) return;
+    for (const sp of ingredients) {
+      const product = productById.get(sp.productId);
+      if (!product) continue;
 
-      const m = sp.amount / 100;
+      const amount = Number(sp.amount);
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+
+      const m = amount / 100;
       calories += product.calories * m;
       protein += product.protein * m;
       carbs += product.carbs * m;
       fats += product.fats * m;
-    });
+    }
 
     return {
       calories: Math.round(calories),
@@ -49,17 +57,30 @@ export function DishEditorScreen() {
       carbs: Math.round(carbs),
       fats: Math.round(fats)
     };
-  }, [ingredients, products]);
+  }, [ingredients, productById]);
 
   const addIngredient = () => {
-    if (products.length === 0) return;
+    if (products.length === 0) {
+      Alert.alert(t('common.error'), t('dishEditor.noProducts'));
+      return;
+    }
+
     setIngredients(prev => [...prev, { productId: products[0].id, amount: 100 }]);
   };
 
   const updateIngredient = (index: number, field: 'productId' | 'amount', value: any) => {
     setIngredients(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+
+      if (!updated[index]) return prev;
+
+      if (field === 'amount') {
+        const n = Number(String(value).replace(/[^\d.]/g, ''));
+        updated[index] = { ...updated[index], amount: Number.isFinite(n) ? n : 0 };
+      } else {
+        updated[index] = { ...updated[index], productId: String(value) };
+      }
+
       return updated;
     });
   };
@@ -74,37 +95,41 @@ export function DishEditorScreen() {
       return;
     }
 
-    if (!Number.isFinite(prepTime) || prepTime <= 0) {
-      Alert.alert(
-        t('dishEditor.alert.missingName.title'),
-        t('dishEditor.alert.missingName.msg')
-      );
+    const prep = Number(prepTime);
+    if (!Number.isFinite(prep) || prep <= 0) {
+      Alert.alert(t('dishEditor.alert.invalidPrepTime.title'), t('dishEditor.alert.invalidPrepTime.msg'));
       return;
     }
 
     if (ingredients.length === 0) {
-      Alert.alert(
-        t('dishEditor.alert.missingName.title'),
-        t('dishEditor.alert.missingName.msg')
-      );
+      Alert.alert(t('dishEditor.alert.noIngredients.title'), t('dishEditor.alert.noIngredients.msg'));
       return;
+    }
+
+    for (const ing of ingredients) {
+      if (!ing.productId) {
+        Alert.alert(t('dishEditor.alert.invalidIngredient.title'), t('dishEditor.alert.invalidIngredient.msg'));
+        return;
+      }
+      if (!Number.isFinite(ing.amount) || ing.amount <= 0) {
+        Alert.alert(t('dishEditor.alert.invalidIngredientAmount.title'), t('dishEditor.alert.invalidIngredientAmount.msg'));
+        return;
+      }
     }
 
     if (!instructions.trim()) {
-      Alert.alert(
-        t('dishEditor.alert.missingName.title'),
-        t('dishEditor.alert.missingName.msg')
-      );
+      Alert.alert(t('dishEditor.alert.missingInstructions.title'), t('dishEditor.alert.missingInstructions.msg'));
       return;
     }
 
-    const newDish = {
+    const newDish: any = {
       id: existingDish?.id ?? Date.now().toString(),
       name: dishName.trim(),
-      products: ingredients,
-      instructions,
-      prepTime,
-      image: existingDish?.image ?? null
+      products: ingredients.map(i => ({ productId: i.productId, amount: Number(i.amount) })),
+      instructions: instructions.trim(),
+      prepTime: prep,
+      image: existingDish?.image ?? null,
+      nutritionTotal: nutrition
     };
 
     if (existingDish) {
@@ -199,7 +224,10 @@ export function DishEditorScreen() {
           </Text>
           <TextInput
             value={String(prepTime)}
-            onChangeText={(v) => setPrepTime(Number(v))}
+            onChangeText={(v) => {
+              const n = Number(String(v).replace(/[^\d]/g, ''));
+              setPrepTime(Number.isFinite(n) ? n : 0);
+            }}
             keyboardType="numeric"
             placeholderTextColor={colors.muted}
             style={inputStyle}
@@ -213,9 +241,15 @@ export function DishEditorScreen() {
           rightButtonLabel={t('common.add')}
           rightButtonAction={addIngredient}
         >
+          {products.length === 0 && (
+            <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 10 }}>
+              {t('dishEditor.noProducts')}
+            </Text>
+          )}
+
           {ingredients.map((ing, index) => (
             <View
-              key={index}
+              key={`${ing.productId}-${index}`}
               style={{
                 backgroundColor: colors.input,
                 padding: 12,
@@ -239,6 +273,7 @@ export function DishEditorScreen() {
                 }}
               >
                 <Picker
+                  enabled={products.length > 0}
                   selectedValue={ing.productId}
                   onValueChange={(v) => updateIngredient(index, 'productId', v)}
                 >
@@ -255,7 +290,7 @@ export function DishEditorScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <TextInput
                   value={String(ing.amount)}
-                  onChangeText={(v) => updateIngredient(index, 'amount', Number(v))}
+                  onChangeText={(v) => updateIngredient(index, 'amount', v)}
                   keyboardType="numeric"
                   placeholderTextColor={colors.muted}
                   style={[inputStyle, { flex: 1 }]}

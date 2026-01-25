@@ -288,6 +288,24 @@ const pl: Dict = {
 'settings.wip.title': 'Wkrótce',
 'settings.wip.msg': '"{{feature}}" jest w przygotowaniu.',
 
+// Dish editor - extra (validation / empty states)
+'dishEditor.noProducts': 'Brak produktów — pobierz produkty z API i spróbuj ponownie.',
+
+'dishEditor.alert.invalidPrepTime.title': 'Nieprawidłowy czas',
+'dishEditor.alert.invalidPrepTime.msg': 'Podaj poprawny czas przygotowania (minuty).',
+
+'dishEditor.alert.noIngredients.title': 'Brak składników',
+'dishEditor.alert.noIngredients.msg': 'Dodaj przynajmniej jeden składnik.',
+
+'dishEditor.alert.invalidIngredient.title': 'Nieprawidłowy składnik',
+'dishEditor.alert.invalidIngredient.msg': 'Wybierz produkt dla każdego składnika.',
+
+'dishEditor.alert.invalidIngredientAmount.title': 'Nieprawidłowa ilość',
+'dishEditor.alert.invalidIngredientAmount.msg': 'Ilość musi być liczbą większą od 0.',
+
+'dishEditor.alert.missingInstructions.title': 'Brak instrukcji',
+'dishEditor.alert.missingInstructions.msg': 'Wpisz instrukcje przygotowania.',
+
 
 };
 
@@ -577,6 +595,23 @@ const en: Dict = {
 'settings.theme.dark': 'Dark',
 'settings.wip.title': 'Coming soon',
 'settings.wip.msg': '"{{feature}}" is a work in progress.',
+// Dish editor - extra (validation / empty states)
+'dishEditor.noProducts': 'No products available — fetch products from the API and try again.',
+
+'dishEditor.alert.invalidPrepTime.title': 'Invalid time',
+'dishEditor.alert.invalidPrepTime.msg': 'Enter a valid preparation time (minutes).',
+
+'dishEditor.alert.noIngredients.title': 'No ingredients',
+'dishEditor.alert.noIngredients.msg': 'Add at least one ingredient.',
+
+'dishEditor.alert.invalidIngredient.title': 'Invalid ingredient',
+'dishEditor.alert.invalidIngredient.msg': 'Select a product for each ingredient.',
+
+'dishEditor.alert.invalidIngredientAmount.title': 'Invalid amount',
+'dishEditor.alert.invalidIngredientAmount.msg': 'Amount must be a number greater than 0.',
+
+'dishEditor.alert.missingInstructions.title': 'Missing instructions',
+'dishEditor.alert.missingInstructions.msg': 'Enter preparation instructions.',
 
 };
 

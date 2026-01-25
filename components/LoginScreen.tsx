@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Mail, Lock, User, Leaf } from 'lucide-react-native';
 import { useApp } from './AppContext';
-import { signup, login as apiLogin } from './api';
+import { signup, login as apiLogin, getMe } from './api';
 import { useT } from './i18n';
 import { useTheme } from './theme';
 
@@ -52,16 +52,16 @@ export function LoginScreen() {
     if (isSignUp && name.trim().length < 2) newErrors.name = t('err.nameShort');
     if (!email.includes('@')) newErrors.email = t('err.badEmail');
 
-    if (!isDevBypass && password.length < 6) newErrors.password = t('err.passShort');
+    if (!isDevBypass && !password.trim()) newErrors.password = t('err.passShort');
+
+    if (isSignUp && !isDevBypass && password.length < 6) newErrors.password = t('err.passShort');
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const normalizeErrorMessage = (err: unknown) => {
-    // Zabezpieczenie przed "[object Object]"
     if (err instanceof Error) return err.message || t('err.generic');
-
     if (typeof err === 'string') return err;
 
     try {
@@ -83,7 +83,8 @@ export function LoginScreen() {
 
       login({
         access_token: 'dev-access-token',
-        refresh_token: 'dev-refresh-token'
+        refresh_token: 'dev-refresh-token',
+        user: { id: 'dev', name: 'Developer', email: 'dev@local' }
       } as any);
 
       setLoading(false);
@@ -95,15 +96,21 @@ export function LoginScreen() {
       const safeEmail = email.trim().toLowerCase();
 
       if (isSignUp) {
-        await signup({ email: safeEmail, password });
-        const tokens = await apiLogin({ email: safeEmail, password });
-        login(tokens);
-      } else {
-        const tokens = await apiLogin({ email: safeEmail, password });
-        login(tokens);
+        await signup({ email: safeEmail, password, name: name.trim() });
       }
+
+      const tokens = await apiLogin({ email: safeEmail, password });
+
+      let me: any = null;
+      try {
+        me = await getMe(tokens.access_token);
+      } catch {
+        me = { email: safeEmail, name: name.trim() || '' };
+      }
+
+      login({ ...tokens, user: me } as any);
     } catch (err: unknown) {
-      setErrors({ email: normalizeErrorMessage(err) });
+      setErrors(prev => ({ ...prev, email: normalizeErrorMessage(err) }));
     } finally {
       setLoading(false);
     }
@@ -221,6 +228,7 @@ export function LoginScreen() {
                 onSubmitEditing={() => emailRef.current?.focus()}
                 textContentType="name"
                 autoCorrect={false}
+                autoCapitalize="words"
               />
             )}
 
@@ -238,6 +246,7 @@ export function LoginScreen() {
               onSubmitEditing={() => passwordRef.current?.focus()}
               textContentType="emailAddress"
               autoCorrect={false}
+              autoCapitalize="none"
             />
 
             {/* PASSWORD */}
@@ -252,8 +261,9 @@ export function LoginScreen() {
               colors={colors}
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
-              textContentType="password"
+              textContentType={isSignUp ? 'newPassword' : 'password'}
               autoCorrect={false}
+              autoCapitalize="none"
             />
 
             {/* FORGOT PASSWORD */}
@@ -339,6 +349,7 @@ type FieldProps = {
   onSubmitEditing?: () => void;
   textContentType?: any;
   autoCorrect?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 };
 
 function Field({
@@ -354,7 +365,8 @@ function Field({
   returnKeyType,
   onSubmitEditing,
   textContentType,
-  autoCorrect
+  autoCorrect,
+  autoCapitalize
 }: FieldProps) {
   return (
     <View style={{ marginBottom: 16 }}>
@@ -369,7 +381,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         secureTextEntry={secure}
-        autoCapitalize="none"
+        autoCapitalize={autoCapitalize ?? 'none'}
         keyboardType={keyboardType ?? 'default'}
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}

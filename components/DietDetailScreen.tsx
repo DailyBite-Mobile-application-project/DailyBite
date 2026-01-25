@@ -4,7 +4,7 @@ import { useApp } from './AppContext';
 import { useT } from './i18n';
 import { useTheme } from './theme';
 
-type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
+type Nutrition = { calories: number; protein: number; carbs: number; fats: number };
 
 export function DietDetailScreen({ dietId }: { dietId: string }) {
   const { dietPlans, navigate, dishes, products } = useApp();
@@ -12,8 +12,7 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
   const colors = useTheme();
 
   const plan = dietPlans.find(p => p.id === dietId);
-
-  const categoryLabel = (cat: DietCategory) => {
+ const categoryLabel = (cat: string) => {
     switch (cat) {
       case 'Balanced':
         return t('dietCat.balanced');
@@ -23,6 +22,8 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
         return t('dietCat.vegan');
       case 'Keto':
         return t('dietCat.keto');
+      default:
+        return cat || t('dietCat.balanced');
     }
   };
 
@@ -38,14 +39,23 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
     plan.image ??
     'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?_gl=1*mskzal*_ga*NTQ1NDU2MDYyLjE3NjM3ODU0NDQ.*_ga_8JE65Q40S6*czE3NjM3ODU0NDMkbzEkZzEkdDE3NjM3ODU0NDckajU2JGwwJGgw';
 
-  const cat = (plan.category as DietCategory) ?? 'Balanced';
-  const durationLabel = plan.duration.replace('common.days', t('common.days'));
-  const planDishes = dishes.filter(dish => plan.dishIds.includes(dish.id));
+  const productById = new Map(products.map(p => [p.id, p]));
+  const dishById = new Map(dishes.map(d => [d.id, d]));
 
-  const nutrition = planDishes.reduce(
+  const planDishes = (plan.dishIds || [])
+    .map(id => dishById.get(id))
+    .filter((d): d is NonNullable<typeof d> => !!d);
+ const durationLabel =
+    (plan as any).durationDays != null
+      ? `${(plan as any).durationDays} ${t('common.days')}`
+      : (plan.duration ?? '');
+
+  const cat = plan.category ?? 'Balanced';
+
+  const computedNutrition: Nutrition = planDishes.reduce(
     (acc, dish) => {
       dish.products.forEach(sp => {
-        const product = products.find(p => p.id === sp.productId);
+        const product = productById.get(sp.productId);
         if (!product) return;
 
         const m = sp.amount / 100;
@@ -59,6 +69,9 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
     },
     { calories: 0, protein: 0, carbs: 0, fats: 0 }
   );
+
+  const nutritionFromPlan = (plan as any).nutritionTotal as Nutrition | undefined;
+  const nutrition = nutritionFromPlan ?? computedNutrition;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -130,7 +143,11 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
           {/* STATS */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
             <Stat icon={Clock} label={t('dietDetail.duration')} value={durationLabel} />
-            <Stat icon={Flame} label={t('dietDetail.calories')} value={`${Math.round(nutrition.calories)} ${t('common.kcal')}`} />
+            <Stat
+              icon={Flame}
+              label={t('dietDetail.calories')}
+              value={`${Math.round(nutrition.calories)} ${t('common.kcal')}`}
+            />
           </View>
 
           {/* MACROS */}
@@ -182,8 +199,9 @@ export function DietDetailScreen({ dietId }: { dietId: string }) {
               <Text style={{ color: colors.text, fontWeight: '600', marginBottom: 6 }}>
                 {t('dishEditor.section.ingredients')}
               </Text>
+
               {dish.products.map((sp, idx) => {
-                const product = products.find(p => p.id === sp.productId);
+                const product = productById.get(sp.productId);
                 const label = product ? product.name : t('main.unknownDish');
 
                 return (

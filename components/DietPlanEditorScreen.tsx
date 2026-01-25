@@ -21,6 +21,19 @@ import { useTheme } from './theme';
 
 type DietCategory = 'Balanced' | 'Weight Loss' | 'Vegan' | 'Keto';
 
+type Nutrition = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+};
+
+function safeParseDurationDays(duration?: string | null): string {
+  if (!duration) return '';
+  const digits = duration.replace(/\D/g, '');
+  return digits || '';
+}
+
 export function DietPlanEditorScreen() {
   const t = useT();
   const colors = useTheme();
@@ -42,35 +55,48 @@ export function DietPlanEditorScreen() {
 
   const [name, setName] = useState(existingPlan?.name ?? '');
   const [description, setDescription] = useState(existingPlan?.description ?? '');
-  const [durationDays, setDurationDays] = useState(
-    existingPlan?.duration ? existingPlan.duration.replace(/\D/g, '') : ''
-  );
-  const [category, setCategory] = useState<DietCategory>(
-    (existingPlan?.category as DietCategory) ?? 'Balanced'
-  );
+
+  
+  const [durationDays, setDurationDays] = useState(() => {
+  
+    const fromLegacy = safeParseDurationDays(existingPlan?.duration ?? '');
+   
+    const fromNew = (existingPlan as any)?.durationDays;
+    return String(fromNew ?? fromLegacy ?? '');
+  });
+
+  const [category, setCategory] = useState<DietCategory>(() => {
+    const c = (existingPlan?.category ?? 'Balanced') as DietCategory;
+    return (['Balanced', 'Weight Loss', 'Vegan', 'Keto'] as DietCategory[]).includes(c) ? c : 'Balanced';
+  });
+
   const [image, setImage] = useState<string | null>(existingPlan?.image ?? null);
+
   const [assignedDishes, setAssignedDishes] = useState<string[]>(
     existingPlan?.dishIds ?? []
   );
 
-  const nutrition = useMemo(() => {
+  const dishById = useMemo(() => new Map(dishes.map(d => [d.id, d])), [dishes]);
+  const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+
+  const nutrition = useMemo<Nutrition>(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
 
-    assignedDishes.forEach(id => {
-      const dish = dishes.find(d => d.id === id);
-      if (!dish) return;
+    for (const id of assignedDishes) {
+      const dish = dishById.get(id);
+      if (!dish) continue;
 
-      dish.products.forEach(sp => {
-        const product = products.find(p => p.id === sp.productId);
-        if (!product) return;
+      for (const sp of dish.products) {
+        const product = productById.get(sp.productId);
+        if (!product) continue;
 
         const m = sp.amount / 100;
         calories += product.calories * m;
         protein += product.protein * m;
         carbs += product.carbs * m;
         fats += product.fats * m;
-      });
-    });
+      }
+    }
 
     return {
       calories: Math.round(calories),
@@ -78,7 +104,7 @@ export function DietPlanEditorScreen() {
       carbs: Math.round(carbs),
       fats: Math.round(fats)
     };
-  }, [assignedDishes, dishes, products]);
+  }, [assignedDishes, dishById, productById]);
 
   const toggleDish = (id: string) => {
     setAssignedDishes(prev =>
@@ -86,7 +112,7 @@ export function DietPlanEditorScreen() {
     );
   };
 
-  const categoryLabel = (cat: DietCategory) => {
+  const categoryLabel = (cat: string) => {
     switch (cat) {
       case 'Balanced':
         return t('dietCat.balanced');
@@ -96,6 +122,9 @@ export function DietPlanEditorScreen() {
         return t('dietCat.vegan');
       case 'Keto':
         return t('dietCat.keto');
+      default:
+       
+        return cat || t('dietCat.balanced');
     }
   };
 
@@ -125,7 +154,7 @@ export function DietPlanEditorScreen() {
     }
 
     const daysNumber = Number(durationDays);
-    if (isNaN(daysNumber) || daysNumber < 1 || daysNumber > 14) {
+    if (Number.isNaN(daysNumber) || daysNumber < 1 || daysNumber > 14) {
       Alert.alert(
         t('planEditor.alert.invalidDuration.title'),
         t('planEditor.alert.invalidDuration.msg')
@@ -141,15 +170,18 @@ export function DietPlanEditorScreen() {
       return;
     }
 
-    const newPlan = {
+
+    const newPlan: any = {
       id: existingPlan?.id ?? Date.now().toString(),
-      name,
-      description,
-      duration: `${daysNumber} ${t('common.days')}`,
+      name: name.trim(),
+      description: description.trim(),
+      durationDays: daysNumber, 
+      duration: `${daysNumber} ${t('common.days')}`, 
       category,
       image,
       dishIds: assignedDishes,
-      calories: nutrition.calories
+      calories: nutrition.calories, 
+      nutritionTotal: nutrition 
     };
 
     if (existingPlan) {
@@ -164,7 +196,7 @@ export function DietPlanEditorScreen() {
   const duplicatePlan = () => {
     if (!existingPlan) return;
 
-    const cloned = {
+    const cloned: any = {
       ...existingPlan,
       id: Date.now().toString(),
       name: `${existingPlan.name} ${t('planEditor.copySuffix')}`
@@ -195,7 +227,7 @@ export function DietPlanEditorScreen() {
   };
 
   const pickImage = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
+   const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
         t('planEditor.alert.permission.title'),
@@ -281,7 +313,7 @@ export function DietPlanEditorScreen() {
         <Text style={styles.label}>{t('planEditor.durationDays')}</Text>
         <TextInput
           value={durationDays}
-          onChangeText={setDurationDays}
+          onChangeText={(v) => setDurationDays(v.replace(/[^\d]/g, ''))}
           keyboardType="numeric"
           placeholder={t('planEditor.durationPh')}
           placeholderTextColor={colors.muted}
