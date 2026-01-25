@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   View,
   Text,
   TextInput,
   ScrollView,
+  TouchableWithoutFeedback,
   TouchableOpacity,
   Image,
   RefreshControl
@@ -95,109 +99,112 @@ export function DietPlansScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* HEADER */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderColor: colors.border,
-          paddingHorizontal: 20,
-          paddingVertical: 14
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-          <TouchableOpacity
-            onPress={() => navigate('main')}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <View
             style={{
-              width: 40,
-              height: 40,
-              backgroundColor: colors.input,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12
+              backgroundColor: colors.card,
+              borderBottomWidth: 1,
+              borderColor: colors.border,
+              paddingHorizontal: 20,
+              paddingVertical: 14
             }}
           >
-            <ArrowLeft size={20} color={colors.text} />
-          </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <TouchableOpacity
+                onPress={() => navigate('main')}
+                style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: colors.input,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12
+                }}
+              >
+                <ArrowLeft size={20} color={colors.text} />
+              </TouchableOpacity>
 
-          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
-            {t('dietPlans.title')}
-          </Text>
-        </View>
+              <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+                {t('dietPlans.title')}
+              </Text>
+            </View>
 
-        {/* SEARCH */}
-        <View style={{ position: 'relative' }}>
-          <Search
-            size={18}
-            color={colors.muted}
-            style={{ position: 'absolute', left: 12, top: 16 }}
-          />
-          <TextInput
-            placeholder={t('dietPlans.searchPlaceholder')}
-            placeholderTextColor={colors.muted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={{
-              paddingLeft: 40,
-              paddingVertical: 10,
-              backgroundColor: colors.input,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: 8,
-              fontSize: 14,
-              color: colors.text
-            }}
-          />
-        </View>
-      </View>
-
-      {/* CATEGORIES */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderColor: colors.border,
-          paddingVertical: 6
-        }}
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-        >
-          <View style={{ flexDirection: 'row' }}>
-            {categories.map((category, index) => {
-              const active = selectedCategory === category;
-
-              return (
-                <TouchableOpacity
-                  key={category}
-                  onPress={() => setSelectedCategory(category)}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 6,
-                    borderRadius: 14,
-                    backgroundColor: active ? colors.primary : colors.input,
-                    marginRight: index !== categories.length - 1 ? 10 : 0
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: active ? 'white' : colors.text,
-                      fontWeight: '600',
-                      fontSize: 13
-                    }}
-                  >
-                    {categoryLabel(category)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            <View style={{ position: 'relative' }}>
+              <Search
+                size={18}
+                color={colors.muted}
+                style={{ position: 'absolute', left: 12, top: 16 }}
+              />
+              <TextInput
+                placeholder={t('dietPlans.searchPlaceholder')}
+                placeholderTextColor={colors.muted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={{
+                  paddingLeft: 40,
+                  paddingVertical: 10,
+                  backgroundColor: colors.input,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  color: colors.text
+                }}
+              />
+            </View>
           </View>
-        </ScrollView>
-      </View>
+
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderBottomWidth: 1,
+              borderColor: colors.border,
+              paddingVertical: 6
+            }}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            >
+              <View style={{ flexDirection: 'row' }}>
+                {categories.map((category, index) => {
+                  const active = selectedCategory === category;
+
+                  return (
+                    <TouchableOpacity
+                      key={category}
+                      onPress={() => setSelectedCategory(category)}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 6,
+                        borderRadius: 14,
+                        backgroundColor: active ? colors.primary : colors.input,
+                        marginRight: index !== categories.length - 1 ? 10 : 0
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: active ? 'white' : colors.text,
+                          fontWeight: '600',
+                          fontSize: 13
+                        }}
+                      >
+                        {categoryLabel(category)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
 
       {/* PLANS LIST */}
       <ScrollView
@@ -293,8 +300,10 @@ export function DietPlansScreen() {
         <Plus size={30} color="white" />
       </TouchableOpacity>
 
-      <BottomNav active="diet-plans" />
-    </View>
+          <BottomNav active="diet-plans" />
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

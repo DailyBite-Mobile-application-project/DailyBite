@@ -41,6 +41,7 @@ export function DishEditorScreen() {
     }
   }, [products.length]);
 
+  // Derived from ingredient grams to keep UI responsive without extra API calls.
   const nutrition = useMemo<Nutrition>(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
 
@@ -191,10 +192,9 @@ export function DishEditorScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
-      {/* HEADER */}
       <View
         style={{
           backgroundColor: colors.card,
@@ -244,7 +244,6 @@ export function DishEditorScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
-        {/* BASIC */}
         <Section title={t('dishEditor.section.basic')} colors={colors}>
           <Text style={{ color: colors.muted, marginBottom: 6 }}>{t('dishEditor.nameLabel')}</Text>
           <TextInput
@@ -270,7 +269,6 @@ export function DishEditorScreen() {
           />
         </Section>
 
-        {/* INGREDIENTS */}
         <Section
           title={t('dishEditor.section.ingredients')}
           colors={colors}
@@ -356,7 +354,6 @@ export function DishEditorScreen() {
           )}
         </Section>
 
-        {/* INSTRUCTIONS */}
         <Section title={t('dishEditor.section.instructions')} colors={colors}>
           <TextInput
             value={instructions}
@@ -368,7 +365,6 @@ export function DishEditorScreen() {
           />
         </Section>
 
-        {/* NUTRITION (read-only) */}
         <Section title={t('dishEditor.section.nutrition')} colors={colors}>
           <Text style={{ color: colors.primary, fontSize: 16 }}>
             {t('dishEditor.nut.calories')}: {nutrition.calories} {t('common.kcal')}

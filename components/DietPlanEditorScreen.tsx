@@ -84,6 +84,7 @@ export function DietPlanEditorScreen() {
   const dishById = useMemo(() => new Map(dishes.map(d => [d.id, d])), [dishes]);
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
+  // Uses local dish + product data to avoid extra backend round-trips.
   const nutrition = useMemo<Nutrition>(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
 
@@ -298,10 +299,9 @@ export function DietPlanEditorScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigate('diet-plans')} style={styles.backBtn}>
           <ArrowLeft size={20} color={colors.text} />
@@ -322,7 +322,6 @@ export function DietPlanEditorScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* IMAGE SECTION */}
         <Text style={styles.label}>{t('planEditor.image')}</Text>
 
         {image ? (
@@ -339,7 +338,6 @@ export function DietPlanEditorScreen() {
           </TouchableOpacity>
         )}
 
-        {/* NAME */}
         <Text style={styles.label}>{t('planEditor.name')}</Text>
         <TextInput
           value={name}
@@ -349,7 +347,6 @@ export function DietPlanEditorScreen() {
           style={styles.input}
         />
 
-        {/* DESCRIPTION */}
         <Text style={styles.label}>{t('planEditor.desc')}</Text>
         <TextInput
           value={description}
@@ -360,7 +357,6 @@ export function DietPlanEditorScreen() {
           multiline
         />
 
-        {/* DURATION */}
         <Text style={styles.label}>{t('planEditor.durationDays')}</Text>
         <TextInput
           value={durationDays}
@@ -371,7 +367,6 @@ export function DietPlanEditorScreen() {
           style={styles.input}
         />
 
-        {/* NUTRITION SUMMARY */}
         <Text style={styles.sectionTitle}>{t('planEditor.nutritionCalculated')}</Text>
 
         <Text style={styles.nutriText}>
@@ -387,7 +382,6 @@ export function DietPlanEditorScreen() {
           {t('planEditor.nut.fats')}: {nutrition.fats} g
         </Text>
 
-        {/* CATEGORY */}
         <Text style={styles.label}>{t('planEditor.category')}</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -409,7 +403,6 @@ export function DietPlanEditorScreen() {
           </View>
         </ScrollView>
 
-        {/* ASSIGN DISHES */}
         <Text style={styles.sectionTitle}>{t('planEditor.assignDishes')}</Text>
 
         {dishes.map(dish => {
@@ -425,7 +418,6 @@ export function DietPlanEditorScreen() {
           );
         })}
 
-        {/* DUPLICATE */}
         {existingPlan && (
           <TouchableOpacity onPress={duplicatePlan} style={styles.duplicateBtn}>
             <Copy size={18} color="white" />
@@ -433,7 +425,6 @@ export function DietPlanEditorScreen() {
           </TouchableOpacity>
         )}
 
-        {/* DELETE */}
         {existingPlan && (
           <TouchableOpacity onPress={deletePlan} style={styles.deleteBtn}>
             <Trash2 size={18} color="white" />

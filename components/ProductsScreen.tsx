@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   View,
   Text,
   ScrollView,
   TextInput,
+  TouchableWithoutFeedback,
   TouchableOpacity,
   ActivityIndicator
 } from 'react-native';
@@ -113,120 +117,127 @@ export function ProductsScreen() {
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
-      {/* HEADER */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderColor: colors.border,
-          paddingHorizontal: 20,
-          paddingVertical: 14
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-          <TouchableOpacity
-            onPress={() => navigate('main')}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <View
             style={{
-              width: 40,
-              height: 40,
-              backgroundColor: softBg,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12
-            }}
-          >
-            <ArrowLeft size={20} color={colors.text} />
-          </TouchableOpacity>
-
-          <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text, flex: 1 }}>
-            {t('products.title')}
-          </Text>
-
-          <TouchableOpacity
-            onPress={loadInitial}
-            style={{
-              width: 40,
-              height: 40,
-              backgroundColor: softBg,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <RefreshCcw size={18} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        {/* SEARCH */}
-        <View style={{ position: 'relative' }}>
-          <Search size={18} color={colors.muted} style={{ position: 'absolute', left: 12, top: 16 }} />
-          <TextInput
-            placeholder={t('products.searchPlaceholder')}
-            placeholderTextColor={colors.muted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={{
-              paddingLeft: 40,
-              paddingVertical: 10,
-              backgroundColor: colors.input,
-              borderWidth: 1,
+              backgroundColor: colors.card,
+              borderBottomWidth: 1,
               borderColor: colors.border,
-              borderRadius: 8,
-              fontSize: 14,
-              color: colors.text
+              paddingHorizontal: 20,
+              paddingVertical: 14
             }}
-          />
-        </View>
-      </View>
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <TouchableOpacity
+                onPress={() => navigate('main')}
+                style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: softBg,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12
+                }}
+              >
+                <ArrowLeft size={20} color={colors.text} />
+              </TouchableOpacity>
 
-      {/* CATEGORIES */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderColor: colors.border,
-          paddingVertical: 6
-        }}
-      >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row' }}>
-            {categories.map((category, index) => {
-              const active = selectedCategory === category;
+              <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text, flex: 1 }}>
+                {t('products.title')}
+              </Text>
 
-              return (
-                <TouchableOpacity
-                  key={category}
-                  onPress={() => setSelectedCategory(category)}
-                  style={{
-                    paddingHorizontal: 18,
-                    paddingVertical: 8,
-                    borderRadius: 12,
-                    backgroundColor: active ? colors.primary : softBg,
-                    marginRight: index !== categories.length - 1 ? 10 : 0,
-                    borderWidth: theme === 'dark' && !active ? 1 : 0,
-                    borderColor: theme === 'dark' && !active ? colors.border : 'transparent'
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: active ? colors.primaryText : colors.text,
-                      fontWeight: '600',
-                      fontSize: 14,
-                      lineHeight: 18,
-                      includeFontPadding: false,
-                      textAlignVertical: 'center'
-                    }}
-                  >
-                    {categoryLabel(category)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+              <TouchableOpacity
+                onPress={loadInitial}
+                style={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: softBg,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <RefreshCcw size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ position: 'relative' }}>
+              <Search size={18} color={colors.muted} style={{ position: 'absolute', left: 12, top: 16 }} />
+              <TextInput
+                placeholder={t('products.searchPlaceholder')}
+                placeholderTextColor={colors.muted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={{
+                  paddingLeft: 40,
+                  paddingVertical: 10,
+                  backgroundColor: colors.input,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  color: colors.text
+                }}
+              />
+            </View>
           </View>
-        </ScrollView>
-      </View>
+
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderBottomWidth: 1,
+              borderColor: colors.border,
+              paddingVertical: 6
+            }}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            >
+              <View style={{ flexDirection: 'row' }}>
+                {categories.map((category, index) => {
+                  const active = selectedCategory === category;
+
+                  return (
+                    <TouchableOpacity
+                      key={category}
+                      onPress={() => setSelectedCategory(category)}
+                      style={{
+                        paddingHorizontal: 18,
+                        paddingVertical: 8,
+                        borderRadius: 12,
+                        backgroundColor: active ? colors.primary : softBg,
+                        marginRight: index !== categories.length - 1 ? 10 : 0,
+                        borderWidth: theme === 'dark' && !active ? 1 : 0,
+                        borderColor: theme === 'dark' && !active ? colors.border : 'transparent'
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: active ? colors.primaryText : colors.text,
+                          fontWeight: '600',
+                          fontSize: 14,
+                          lineHeight: 18,
+                          includeFontPadding: false,
+                          textAlignVertical: 'center'
+                        }}
+                      >
+                        {categoryLabel(category)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
 
       {/* BODY */}
       {(loading || ctxLoading) && (
@@ -343,8 +354,10 @@ export function ProductsScreen() {
         </ScrollView>
       )}
 
-      <BottomNav active="products" />
-    </View>
+          <BottomNav active="products" />
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -69,7 +69,6 @@ export function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingBottom: 70 }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
         <View
           style={{
             backgroundColor: brandHeaderBg,
@@ -116,7 +115,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* STATS */}
         <View style={{ paddingHorizontal: 20, marginTop: -26, marginBottom: 20 }}>
           <View
             style={{
@@ -138,7 +136,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* THEME + LANGUAGE */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10, color: colors.text }}>
             {t('settings.theme')}
@@ -187,7 +184,6 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* SETTINGS LIST */}
         <View style={{ paddingHorizontal: 20 }}>
           {settingsSections.map((section, i) => (
             <View key={i} style={{ marginBottom: 20 }}>
@@ -253,7 +249,6 @@ export function SettingsScreen() {
             </View>
           ))}
 
-          {/* LOGOUT */}
           <TouchableOpacity
             onPress={logout}
             style={{
